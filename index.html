@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task List</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-database-compat.js"></script>
+</head>
+<body>
+
+<!-- Sign In Screen -->
+<div id="signInScreen">
+    <div class="sign-in-box" id="signInBox"></div>
+</div>
+
+<!-- Main App -->
+<div id="app" style="display:none;">
+    <!-- Toolbar -->
+    <div id="toolbar">
+        <span id="appTitle">Task List</span>
+        <div class="toolbar-spacer"></div>
+        <div id="viewToggle">
+            <button id="btnTableView" class="active" onclick="switchView('table')">Table</button>
+            <button id="btnCardView" onclick="switchView('cards')">Cards</button>
+        </div>
+        <button id="btnAddTask" onclick="openTaskModal()">+ Add Task</button>
+        <button id="btnCategories" onclick="openCategoryModal()">Categories</button>
+        <span id="syncStatus" class="sync-status"></span>
+        <button id="btnSignOut" onclick="firebaseSignOut()">Sign Out</button>
+    </div>
+
+    <!-- View Container -->
+    <div id="viewContainer"></div>
+</div>
+
+<!-- Task Modal -->
+<div id="taskModalOverlay" class="modal-overlay" onclick="if(event.target===this)closeTaskModal()">
+    <div class="modal-box task-modal">
+        <h3 id="taskModalTitle">Add Task</h3>
+        <input type="hidden" id="taskId">
+        <label for="taskTitleInput">Title *</label>
+        <input type="text" id="taskTitleInput" placeholder="Task title" autofocus>
+        <label for="taskDescInput">Description</label>
+        <textarea id="taskDescInput" placeholder="Description (optional)" rows="3"></textarea>
+        <div class="form-row">
+            <div class="form-field">
+                <label for="taskStartDate">Start Date</label>
+                <input type="date" id="taskStartDate">
+            </div>
+            <div class="form-field">
+                <label for="taskDueDate">Due Date</label>
+                <input type="date" id="taskDueDate">
+            </div>
+        </div>
+        <label for="taskCategory">Category</label>
+        <select id="taskCategory">
+            <option value="">-- None --</option>
+        </select>
+        <div class="modal-actions">
+            <button id="btnDeleteTask" class="btn-danger" onclick="deleteTask()" style="display:none;">Delete</button>
+            <div class="modal-actions-right">
+                <button class="btn-secondary" onclick="closeTaskModal()">Cancel</button>
+                <button class="btn-primary" onclick="saveTask()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Category Modal -->
+<div id="categoryModalOverlay" class="modal-overlay" onclick="if(event.target===this)closeCategoryModal()">
+    <div class="modal-box category-modal">
+        <h3>Manage Categories</h3>
+        <div id="categoryList"></div>
+        <div class="category-add-row">
+            <input type="text" id="newCategoryName" placeholder="New category name">
+            <input type="color" id="newCategoryColor" value="#4a90d9">
+            <button class="btn-primary" onclick="addCategory()">Add</button>
+        </div>
+        <div class="modal-actions">
+            <div class="modal-actions-right">
+                <button class="btn-secondary" onclick="closeCategoryModal()">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
