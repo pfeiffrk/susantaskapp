@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Task List</title>
+    <title>Tasks</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-auth-compat.js"></script>
@@ -20,11 +20,13 @@
 <div id="app" style="display:none;">
     <!-- Toolbar -->
     <div id="toolbar">
-        <span id="appTitle">Task List</span>
+        <span id="appTitle">Tasks</span>
         <div class="toolbar-spacer"></div>
         <div id="viewToggle">
             <button id="btnTableView" class="active" onclick="switchView('table')">Table</button>
             <button id="btnCardView" onclick="switchView('cards')">Cards</button>
+            <button id="btnWeekView" onclick="switchView('week')">Week</button>
+            <button id="btnMonthView" onclick="switchView('month')">Month</button>
         </div>
         <button id="btnAddTask" onclick="openTaskModal()">+ Add Task</button>
         <button id="btnCategories" onclick="openCategoryModal()">Categories</button>
@@ -58,6 +60,12 @@
         <label for="taskCategory">Category</label>
         <select id="taskCategory">
             <option value="">-- None --</option>
+        </select>
+        <label for="taskPriority">Priority</label>
+        <select id="taskPriority">
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
         </select>
         <div class="modal-actions">
             <button id="btnDeleteTask" class="btn-danger" onclick="deleteTask()" style="display:none;">Delete</button>

@@ -34,6 +34,12 @@ function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 }
 
+const PRIORITY_LEVELS = [
+    { value: 'low', label: 'Low', color: '#5cb85c' },
+    { value: 'medium', label: 'Medium', color: '#f0ad4e' },
+    { value: 'high', label: 'High', color: '#d9534f' }
+];
+
 function formatDate(dateStr) {
     if (!dateStr) return '';
     const d = new Date(dateStr + 'T00:00:00');
@@ -55,6 +61,7 @@ function loadFromLocal() {
         tasks = t ? JSON.parse(t) : [];
         categories = c ? JSON.parse(c) : [...DEFAULT_CATEGORIES];
         settings = s ? JSON.parse(s) : { view: 'table', sortField: 'dueDate', sortDir: 'asc' };
+        if (settings.view === 'calendar') settings.view = 'week';
     } catch (e) {
         console.warn('Failed to load from localStorage:', e);
         tasks = [];
@@ -248,12 +255,18 @@ function switchView(view) {
 function updateViewToggle() {
     document.getElementById('btnTableView').classList.toggle('active', settings.view === 'table');
     document.getElementById('btnCardView').classList.toggle('active', settings.view === 'cards');
+    document.getElementById('btnWeekView').classList.toggle('active', settings.view === 'week');
+    document.getElementById('btnMonthView').classList.toggle('active', settings.view === 'month');
 }
 
 // ── Rendering ──
 function renderView() {
     if (settings.view === 'cards') {
         renderCardView();
+    } else if (settings.view === 'week') {
+        renderWeekView();
+    } else if (settings.view === 'month') {
+        renderMonthView();
     } else {
         renderTableView();
     }
@@ -268,21 +281,24 @@ function renderTableView() {
     html += '<thead><tr>';
     html += buildSortHeader('Title', 'title');
     html += buildSortHeader('Category', 'category');
+    html += buildSortHeader('Priority', 'priority');
     html += buildSortHeader('Start Date', 'startDate');
     html += buildSortHeader('Due Date', 'dueDate');
     html += '</tr></thead>';
     html += '<tbody>';
 
     if (sorted.length === 0) {
-        html += '<tr class="empty-row"><td colspan="4">No tasks yet. Click "+ Add Task" to get started.</td></tr>';
+        html += '<tr class="empty-row"><td colspan="5">No tasks yet. Click "+ Add Task" to get started.</td></tr>';
     } else {
         sorted.forEach(task => {
             const cat = categories.find(c => c.id === task.categoryId);
             const catDot = cat ? `<span class="cat-dot" style="background:${cat.color}"></span>` : '';
             const catName = cat ? cat.name : '';
+            const pri = PRIORITY_LEVELS.find(p => p.value === (task.priority || 'low')) || PRIORITY_LEVELS[0];
             html += `<tr onclick="openTaskModal('${task.id}')">`;
             html += `<td>${escapeHtml(task.title)}</td>`;
             html += `<td>${catDot}<span class="cat-name">${escapeHtml(catName)}</span></td>`;
+            html += `<td><span class="priority-badge" style="background:${pri.color}">${pri.label}</span></td>`;
             html += `<td>${formatDate(task.startDate)}</td>`;
             html += `<td>${formatDate(task.dueDate)}</td>`;
             html += '</tr>';
@@ -323,6 +339,10 @@ function getSortedTasks() {
             const catB = categories.find(c => c.id === b.categoryId);
             va = catA ? catA.name.toLowerCase() : '';
             vb = catB ? catB.name.toLowerCase() : '';
+        } else if (field === 'priority') {
+            const order = { high: 0, medium: 1, low: 2 };
+            va = order[a.priority || 'low'] ?? 2;
+            vb = order[b.priority || 'low'] ?? 2;
         } else if (field === 'title') {
             va = (a.title || '').toLowerCase();
             vb = (b.title || '').toLowerCase();
@@ -338,6 +358,8 @@ function getSortedTasks() {
 }
 
 // ── Card View ──
+let cardDragCatId = null;
+
 function renderCardView() {
     const container = document.getElementById('viewContainer');
     let html = '<div class="card-view">';
@@ -348,15 +370,20 @@ function renderCardView() {
 
     columns.forEach(col => {
         const colTasks = tasks.filter(t => (t.categoryId || '') === col.id);
-        html += '<div class="card-column">';
-        html += `<div class="card-column-header">
+        const draggable = col.id ? 'draggable="true"' : '';
+        const dragHandlers = col.id
+            ? `ondragstart="cardColDragStart(event, '${col.id}')" ondragend="cardColDragEnd(event)"`
+            : '';
+        html += `<div class="card-column" data-cat-id="${col.id}" ${draggable} ${dragHandlers}>`;
+        html += `<div class="card-column-header" style="cursor:${col.id ? 'grab' : 'default'}">
             <span><span class="col-dot" style="background:${col.color}"></span>${escapeHtml(col.name)}</span>
             <span class="col-count">${colTasks.length}</span>
         </div>`;
 
         colTasks.forEach(task => {
-            html += `<div class="task-card" style="border-top-color:${col.color}" onclick="openTaskModal('${task.id}')">`;
-            html += `<div class="card-title">${escapeHtml(task.title)}</div>`;
+            html += `<div class="task-card" style="border-top-color:${col.color}" onclick="openTaskModal('${task.id}')" draggable="false">`;
+            const pri = PRIORITY_LEVELS.find(p => p.value === (task.priority || 'low')) || PRIORITY_LEVELS[0];
+            html += `<div class="card-title">${escapeHtml(task.title)} <span class="priority-badge small" style="background:${pri.color}">${pri.label}</span></div>`;
             if (task.description) {
                 html += `<div class="card-desc">${escapeHtml(task.description)}</div>`;
             }
@@ -377,6 +404,331 @@ function renderCardView() {
     container.innerHTML = html;
 }
 
+let cardDropIndicator = null;
+
+function getCardDropSide(col, clientX) {
+    const rect = col.getBoundingClientRect();
+    return clientX < rect.left + rect.width / 2 ? 'left' : 'right';
+}
+
+function showDropIndicator(col, side) {
+    removeDropIndicator();
+    cardDropIndicator = document.createElement('div');
+    cardDropIndicator.className = 'col-drop-indicator';
+    const parent = col.parentElement;
+    if (side === 'left') {
+        parent.insertBefore(cardDropIndicator, col);
+    } else {
+        parent.insertBefore(cardDropIndicator, col.nextSibling);
+    }
+}
+
+function removeDropIndicator() {
+    if (cardDropIndicator && cardDropIndicator.parentElement) {
+        cardDropIndicator.parentElement.removeChild(cardDropIndicator);
+    }
+    cardDropIndicator = null;
+}
+
+function cardColDragStart(e, catId) {
+    cardDragCatId = catId;
+    e.dataTransfer.effectAllowed = 'move';
+    e.currentTarget.classList.add('col-dragging');
+
+    setTimeout(() => {
+        const cardView = document.querySelector('.card-view');
+        if (!cardView) return;
+
+        cardView._onDragOver = function(ev) {
+            if (!cardDragCatId) return;
+            ev.preventDefault();
+            const col = ev.target.closest('.card-column');
+            if (!col || col.dataset.catId === cardDragCatId) {
+                removeDropIndicator();
+                return;
+            }
+            const side = getCardDropSide(col, ev.clientX);
+            showDropIndicator(col, side);
+        };
+
+        cardView._onDrop = function(ev) {
+            ev.preventDefault();
+            if (!cardDragCatId) return;
+
+            const col = ev.target.closest('.card-column');
+            if (!col || col.dataset.catId === cardDragCatId) { removeDropIndicator(); return; }
+
+            const side = getCardDropSide(col, ev.clientX);
+            const targetId = col.dataset.catId;
+            const fromIdx = categories.findIndex(c => c.id === cardDragCatId);
+            if (fromIdx === -1) { removeDropIndicator(); return; }
+
+            const [moved] = categories.splice(fromIdx, 1);
+
+            if (targetId === '') {
+                // Uncategorized column — insert at end
+                categories.push(moved);
+            } else {
+                let toIdx = categories.findIndex(c => c.id === targetId);
+                if (side === 'right') toIdx++;
+                categories.splice(toIdx, 0, moved);
+            }
+
+            cardDragCatId = null;
+            removeDropIndicator();
+            scheduleSave();
+            renderCardView();
+        };
+
+        cardView.addEventListener('dragover', cardView._onDragOver);
+        cardView.addEventListener('drop', cardView._onDrop);
+    }, 0);
+}
+
+function cardColDragEnd(e) {
+    cardDragCatId = null;
+    removeDropIndicator();
+    document.querySelectorAll('.card-column').forEach(col => {
+        col.classList.remove('col-dragging');
+    });
+    const cardView = document.querySelector('.card-view');
+    if (cardView) {
+        if (cardView._onDragOver) cardView.removeEventListener('dragover', cardView._onDragOver);
+        if (cardView._onDrop) cardView.removeEventListener('drop', cardView._onDrop);
+    }
+}
+
+// ── Calendar Shared ──
+let calendarWeekStart = null;
+let calendarMonth = null; // { year, month } for month view
+let calendarDragTaskId = null;
+
+function getMonday(d) {
+    const dt = new Date(d);
+    const day = dt.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    dt.setDate(dt.getDate() + diff);
+    dt.setHours(0, 0, 0, 0);
+    return dt;
+}
+
+function toDateStr(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dd}`;
+}
+
+function calendarDragStart(e, taskId) {
+    calendarDragTaskId = taskId;
+    e.dataTransfer.effectAllowed = 'move';
+    e.target.classList.add('dragging');
+    setTimeout(() => { if (e.target) e.target.classList.remove('dragging'); }, 0);
+}
+
+function calendarDrop(e, dateStr) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
+    if (!calendarDragTaskId) return;
+    const task = tasks.find(t => t.id === calendarDragTaskId);
+    if (task) {
+        task.startDate = dateStr;
+        scheduleSave();
+        renderView();
+    }
+    calendarDragTaskId = null;
+}
+
+function openTaskModalWithDate(dateStr) {
+    openTaskModal(null);
+    setTimeout(() => {
+        document.getElementById('taskStartDate').value = dateStr;
+    }, 10);
+}
+
+function renderCalendarTask(task) {
+    const cat = categories.find(c => c.id === task.categoryId);
+    const pri = PRIORITY_LEVELS.find(p => p.value === (task.priority || 'low')) || PRIORITY_LEVELS[0];
+    const catColor = cat ? cat.color : '#999';
+    let html = `<div class="calendar-task" draggable="true" ondragstart="calendarDragStart(event, '${task.id}')" onclick="openTaskModal('${task.id}')" style="border-left-color:${catColor}">`;
+    html += `<span class="calendar-task-title">${escapeHtml(task.title)}</span>`;
+    html += `<span class="priority-badge small" style="background:${pri.color}">${pri.label}</span>`;
+    html += '</div>';
+    return html;
+}
+
+function renderUnscheduledSection() {
+    const unscheduled = tasks.filter(t => !t.startDate);
+    let html = '<div class="calendar-unscheduled">';
+    html += '<div class="calendar-unscheduled-header">';
+    html += `<span>Unscheduled (${unscheduled.length})</span>`;
+    html += `<button class="btn-primary calendar-unscheduled-add" onclick="openTaskModal()">+ Add Task</button>`;
+    html += '</div>';
+    html += '<div class="calendar-unscheduled-list">';
+    unscheduled.forEach(task => {
+        const cat = categories.find(c => c.id === task.categoryId);
+        const pri = PRIORITY_LEVELS.find(p => p.value === (task.priority || 'low')) || PRIORITY_LEVELS[0];
+        const catColor = cat ? cat.color : '#999';
+        html += `<div class="calendar-task" draggable="true" ondragstart="calendarDragStart(event, '${task.id}')" onclick="openTaskModal('${task.id}')" style="border-left-color:${catColor}">`;
+        html += `<span class="calendar-task-title">${escapeHtml(task.title)}</span>`;
+        html += `<span class="priority-badge small" style="background:${pri.color}">${pri.label}</span>`;
+        if (task.dueDate) html += `<span class="calendar-task-due">Due: ${formatDate(task.dueDate)}</span>`;
+        html += '</div>';
+    });
+    if (unscheduled.length === 0) {
+        html += '<div class="calendar-empty">All tasks are scheduled!</div>';
+    }
+    html += '</div></div>';
+    return html;
+}
+
+// ── Week View ──
+function weekNav(offset) {
+    calendarWeekStart.setDate(calendarWeekStart.getDate() + offset * 7);
+    renderWeekView();
+}
+
+function weekToday() {
+    calendarWeekStart = getMonday(new Date());
+    renderWeekView();
+}
+
+function renderWeekView() {
+    if (!calendarWeekStart) calendarWeekStart = getMonday(new Date());
+    const container = document.getElementById('viewContainer');
+    const todayStr = toDateStr(new Date());
+
+    const weekEnd = new Date(calendarWeekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+
+    const monthFmt = { month: 'long', year: 'numeric' };
+    const startMonth = calendarWeekStart.toLocaleDateString('en-US', monthFmt);
+    const endMonth = weekEnd.toLocaleDateString('en-US', monthFmt);
+    const headerLabel = startMonth === endMonth ? startMonth : `${calendarWeekStart.toLocaleDateString('en-US', { month: 'short' })} \u2013 ${weekEnd.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`;
+
+    let html = '<div class="calendar-wrapper">';
+    html += '<div class="calendar-nav">';
+    html += `<button class="btn-secondary" onclick="weekNav(-1)">&larr; Prev</button>`;
+    html += `<button class="btn-secondary" onclick="weekToday()">Today</button>`;
+    html += `<span class="calendar-title">${headerLabel}</span>`;
+    html += `<button class="btn-secondary" onclick="weekNav(1)">Next &rarr;</button>`;
+    html += '</div>';
+    html += '<div class="calendar-grid calendar-grid-week">';
+
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    for (let i = 0; i < 7; i++) {
+        const day = new Date(calendarWeekStart);
+        day.setDate(day.getDate() + i);
+        const dateStr = toDateStr(day);
+        const isToday = dateStr === todayStr;
+        const dayLabel = day.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const dayTasks = tasks.filter(t => t.startDate === dateStr);
+
+        html += `<div class="calendar-day${isToday ? ' today' : ''}" data-date="${dateStr}" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="calendarDrop(event, '${dateStr}')">`;
+        html += `<div class="calendar-day-header"><span class="calendar-day-name">${dayNames[i]}</span><span class="calendar-day-date">${dayLabel}</span></div>`;
+        html += '<div class="calendar-day-tasks">';
+        dayTasks.forEach(task => { html += renderCalendarTask(task); });
+        html += '</div>';
+        html += `<button class="calendar-day-add" onclick="openTaskModalWithDate('${dateStr}')">+</button>`;
+        html += '</div>';
+    }
+
+    html += '</div>';
+    html += renderUnscheduledSection();
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// ── Month View ──
+function monthNav(offset) {
+    calendarMonth.month += offset;
+    if (calendarMonth.month > 11) { calendarMonth.month = 0; calendarMonth.year++; }
+    if (calendarMonth.month < 0) { calendarMonth.month = 11; calendarMonth.year--; }
+    renderMonthView();
+}
+
+function monthToday() {
+    const now = new Date();
+    calendarMonth = { year: now.getFullYear(), month: now.getMonth() };
+    renderMonthView();
+}
+
+function renderMonthView() {
+    if (!calendarMonth) {
+        const now = new Date();
+        calendarMonth = { year: now.getFullYear(), month: now.getMonth() };
+    }
+    const container = document.getElementById('viewContainer');
+    const todayStr = toDateStr(new Date());
+    const year = calendarMonth.year;
+    const month = calendarMonth.month;
+
+    const headerLabel = new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+    // Find the Monday on or before the 1st of the month
+    const firstOfMonth = new Date(year, month, 1);
+    const lastOfMonth = new Date(year, month + 1, 0);
+    const gridStart = getMonday(firstOfMonth);
+
+    // Find the Sunday on or after the last of the month
+    const gridEnd = new Date(lastOfMonth);
+    const endDay = gridEnd.getDay();
+    if (endDay !== 0) gridEnd.setDate(gridEnd.getDate() + (7 - endDay));
+
+    let html = '<div class="calendar-wrapper">';
+    html += '<div class="calendar-nav">';
+    html += `<button class="btn-secondary" onclick="monthNav(-1)">&larr; Prev</button>`;
+    html += `<button class="btn-secondary" onclick="monthToday()">Today</button>`;
+    html += `<span class="calendar-title">${headerLabel}</span>`;
+    html += `<button class="btn-secondary" onclick="monthNav(1)">Next &rarr;</button>`;
+    html += '</div>';
+
+    // Day name headers
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    html += '<div class="month-grid">';
+    html += '<div class="month-header-row">';
+    dayNames.forEach(name => {
+        html += `<div class="month-header-cell">${name}</div>`;
+    });
+    html += '</div>';
+
+    // Day cells
+    html += '<div class="month-body">';
+    const cursor = new Date(gridStart);
+    while (cursor <= gridEnd) {
+        html += '<div class="month-row">';
+        for (let i = 0; i < 7; i++) {
+            const dateStr = toDateStr(cursor);
+            const isToday = dateStr === todayStr;
+            const isCurrentMonth = cursor.getMonth() === month;
+            const dayTasks = tasks.filter(t => t.startDate === dateStr);
+
+            let cls = 'month-cell';
+            if (isToday) cls += ' today';
+            if (!isCurrentMonth) cls += ' other-month';
+
+            html += `<div class="${cls}" data-date="${dateStr}" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="calendarDrop(event, '${dateStr}')">`;
+            html += `<div class="month-cell-header">`;
+            html += `<span class="month-cell-date">${cursor.getDate()}</span>`;
+            html += `<button class="month-cell-add" onclick="openTaskModalWithDate('${dateStr}')">+</button>`;
+            html += `</div>`;
+            html += '<div class="month-cell-tasks">';
+            dayTasks.forEach(task => { html += renderCalendarTask(task); });
+            html += '</div>';
+            html += '</div>';
+
+            cursor.setDate(cursor.getDate() + 1);
+        }
+        html += '</div>';
+    }
+    html += '</div></div>';
+
+    html += renderUnscheduledSection();
+    html += '</div>';
+    container.innerHTML = html;
+}
+
 // ── Task Modal ──
 function openTaskModal(taskId, presetCategoryId) {
     const overlay = document.getElementById('taskModalOverlay');
@@ -387,6 +739,7 @@ function openTaskModal(taskId, presetCategoryId) {
     const startInput = document.getElementById('taskStartDate');
     const dueInput = document.getElementById('taskDueDate');
     const catSelect = document.getElementById('taskCategory');
+    const priSelect = document.getElementById('taskPriority');
     const deleteBtn = document.getElementById('btnDeleteTask');
 
     // Populate category dropdown
@@ -405,6 +758,7 @@ function openTaskModal(taskId, presetCategoryId) {
         startInput.value = task.startDate || '';
         dueInput.value = task.dueDate || '';
         catSelect.value = task.categoryId || '';
+        priSelect.value = task.priority || 'low';
         deleteBtn.style.display = '';
     } else {
         titleEl.textContent = 'Add Task';
@@ -414,6 +768,7 @@ function openTaskModal(taskId, presetCategoryId) {
         startInput.value = '';
         dueInput.value = '';
         catSelect.value = presetCategoryId || '';
+        priSelect.value = 'low';
         deleteBtn.style.display = 'none';
     }
 
@@ -438,6 +793,7 @@ function saveTask() {
     const startDate = document.getElementById('taskStartDate').value;
     const dueDate = document.getElementById('taskDueDate').value;
     const categoryId = document.getElementById('taskCategory').value;
+    const priority = document.getElementById('taskPriority').value;
 
     if (!title) {
         document.getElementById('taskTitleInput').focus();
@@ -453,6 +809,7 @@ function saveTask() {
             task.startDate = startDate;
             task.dueDate = dueDate;
             task.categoryId = categoryId;
+            task.priority = priority;
         }
     } else {
         // Create new
@@ -463,6 +820,7 @@ function saveTask() {
             startDate,
             dueDate,
             categoryId,
+            priority,
             createdAt: Date.now(),
             order: tasks.length
         });
