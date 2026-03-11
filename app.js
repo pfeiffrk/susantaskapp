@@ -17,7 +17,7 @@ const SETTINGS_KEY = 'taskapp_settings';
 // ── State ──
 let tasks = [];
 let categories = [];
-let settings = { view: 'table', sortField: 'dueDate', sortDir: 'asc' };
+let settings = { view: 'table', sortField: 'dueDate', sortDir: 'asc', activeTab: 'google' };
 let firebaseUser = null;
 let cloudSyncTimer = null;
 let firebaseConfigured = false;
@@ -60,13 +60,14 @@ function loadFromLocal() {
         const s = localStorage.getItem(SETTINGS_KEY);
         tasks = t ? JSON.parse(t) : [];
         categories = c ? JSON.parse(c) : [...DEFAULT_CATEGORIES];
-        settings = s ? JSON.parse(s) : { view: 'table', sortField: 'dueDate', sortDir: 'asc' };
+        settings = s ? JSON.parse(s) : { view: 'table', sortField: 'dueDate', sortDir: 'asc', activeTab: 'google' };
         if (settings.view === 'calendar') settings.view = 'week';
+        if (!settings.activeTab) settings.activeTab = 'google';
     } catch (e) {
         console.warn('Failed to load from localStorage:', e);
         tasks = [];
         categories = [...DEFAULT_CATEGORIES];
-        settings = { view: 'table', sortField: 'dueDate', sortDir: 'asc' };
+        settings = { view: 'table', sortField: 'dueDate', sortDir: 'asc', activeTab: 'google' };
     }
 }
 
@@ -236,12 +237,27 @@ async function doCloudUpload() {
 function onAuthReady(user) {
     loadFromLocal();
     document.getElementById('app').style.display = 'flex';
+    updateTabBar();
     updateViewToggle();
     renderView();
 }
 
 function initApp() {
     initFirebase();
+}
+
+// ── Tab Switching ──
+function switchTab(tab) {
+    settings.activeTab = tab;
+    updateTabBar();
+    scheduleSave();
+    renderView();
+}
+
+function updateTabBar() {
+    document.querySelectorAll('#tabBar .tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === settings.activeTab);
+    });
 }
 
 // ── View Switching ──
@@ -327,8 +343,12 @@ function toggleSort(field) {
     renderView();
 }
 
+function getFilteredTasks() {
+    return tasks.filter(t => (t.source || 'google') === settings.activeTab);
+}
+
 function getSortedTasks() {
-    const sorted = [...tasks];
+    const sorted = [...getFilteredTasks()];
     const field = settings.sortField;
     const dir = settings.sortDir === 'asc' ? 1 : -1;
 
@@ -369,13 +389,14 @@ function renderCardView() {
     columns.push({ id: '', name: 'Uncategorized', color: '#999' });
 
     columns.forEach(col => {
-        const colTasks = tasks.filter(t => (t.categoryId || '') === col.id);
+        const filtered = getFilteredTasks();
+        const colTasks = filtered.filter(t => (t.categoryId || '') === col.id);
         const draggable = col.id ? 'draggable="true"' : '';
         const dragHandlers = col.id
             ? `ondragstart="cardColDragStart(event, '${col.id}')" ondragend="cardColDragEnd(event)"`
             : '';
         html += `<div class="card-column" data-cat-id="${col.id}" ${draggable} ${dragHandlers}>`;
-        html += `<div class="card-column-header" style="cursor:${col.id ? 'grab' : 'default'}">
+        html += `<div class="card-column-header" style="cursor:${col.id ? 'grab' : 'default'}">`;
             <span><span class="col-dot" style="background:${col.color}"></span>${escapeHtml(col.name)}</span>
             <span class="col-count">${colTasks.length}</span>
         </div>`;
@@ -558,7 +579,7 @@ function renderCalendarTask(task) {
 }
 
 function renderUnscheduledSection() {
-    const unscheduled = tasks.filter(t => !t.startDate);
+    const unscheduled = getFilteredTasks().filter(t => !t.startDate);
     let html = '<div class="calendar-unscheduled">';
     html += '<div class="calendar-unscheduled-header">';
     html += `<span>Unscheduled (${unscheduled.length})</span>`;
@@ -623,7 +644,7 @@ function renderWeekView() {
         const dateStr = toDateStr(day);
         const isToday = dateStr === todayStr;
         const dayLabel = day.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        const dayTasks = tasks.filter(t => t.startDate === dateStr);
+        const dayTasks = getFilteredTasks().filter(t => t.startDate === dateStr);
 
         html += `<div class="calendar-day${isToday ? ' today' : ''}" data-date="${dateStr}" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="calendarDrop(event, '${dateStr}')">`;
         html += `<div class="calendar-day-header"><span class="calendar-day-name">${dayNames[i]}</span><span class="calendar-day-date">${dayLabel}</span></div>`;
@@ -702,7 +723,7 @@ function renderMonthView() {
             const dateStr = toDateStr(cursor);
             const isToday = dateStr === todayStr;
             const isCurrentMonth = cursor.getMonth() === month;
-            const dayTasks = tasks.filter(t => t.startDate === dateStr);
+            const dayTasks = getFilteredTasks().filter(t => t.startDate === dateStr);
 
             let cls = 'month-cell';
             if (isToday) cls += ' today';
@@ -821,6 +842,7 @@ function saveTask() {
             dueDate,
             categoryId,
             priority,
+            source: settings.activeTab,
             createdAt: Date.now(),
             order: tasks.length
         });
@@ -905,6 +927,61 @@ function deleteCategoryById(id) {
 function escapeHtml(str) {
     if (!str) return '';
     return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ── Voice Input ──
+let voiceRecognition = null;
+
+function startVoiceInput() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        alert('Voice input is not supported in this browser. Use Chrome or Samsung Internet on your phone.');
+        return;
+    }
+
+    const btn = document.getElementById('btnVoiceTask');
+
+    // If already listening, stop
+    if (voiceRecognition) {
+        voiceRecognition.abort();
+        voiceRecognition = null;
+        btn.classList.remove('listening');
+        return;
+    }
+
+    voiceRecognition = new SpeechRecognition();
+    voiceRecognition.lang = 'en-US';
+    voiceRecognition.interimResults = false;
+    voiceRecognition.continuous = false;
+
+    btn.classList.add('listening');
+
+    voiceRecognition.onresult = function(event) {
+        const transcript = event.results[0][0].transcript;
+        btn.classList.remove('listening');
+        voiceRecognition = null;
+
+        // Open the task modal with the spoken text pre-filled
+        openTaskModal();
+        document.getElementById('taskTitleInput').value = transcript;
+    };
+
+    voiceRecognition.onerror = function(event) {
+        btn.classList.remove('listening');
+        voiceRecognition = null;
+        if (event.error === 'not-allowed') {
+            alert('Microphone access denied. Please allow microphone permission in your browser settings.');
+        } else if (event.error !== 'aborted') {
+            alert('Voice input error: ' + event.error);
+        }
+    };
+
+    voiceRecognition.onend = function() {
+        btn.classList.remove('listening');
+        voiceRecognition = null;
+    };
+
+    voiceRecognition.start();
 }
 
 // ── Start ──
