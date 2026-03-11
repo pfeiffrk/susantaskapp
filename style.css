@@ -151,65 +151,12 @@ body {
 }
 #btnAddTask:hover { background: var(--primary-hover) !important; }
 
-/* ── Voice Input Button ── */
-#btnVoiceTask {
-    background: #e0e0e0 !important;
-    border: 1px solid #bbb !important;
-    border-radius: 4px !important;
-    padding: 5px 10px !important;
-    font-size: 16px !important;
-    cursor: pointer;
-    transition: background 0.2s, box-shadow 0.2s;
-}
-#btnVoiceTask:hover {
-    background: #d0d0d0 !important;
-}
-#btnVoiceTask.listening {
-    background: var(--danger) !important;
-    border-color: var(--danger) !important;
-    animation: pulse-mic 1s ease-in-out infinite;
-}
-@keyframes pulse-mic {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(217, 83, 79, 0.5); }
-    50% { box-shadow: 0 0 0 8px rgba(217, 83, 79, 0); }
-}
-
 .sync-status {
     font-size: 11px;
     color: var(--text-light);
     white-space: nowrap;
     min-width: 50px;
     text-align: center;
-}
-
-/* ── Tab Bar ── */
-#tabBar {
-    display: flex;
-    gap: 0;
-    padding: 0 16px;
-    background: var(--toolbar-bg);
-    border-bottom: 2px solid var(--border);
-    flex-shrink: 0;
-}
-#tabBar .tab {
-    background: none;
-    border: none;
-    border-bottom: 3px solid transparent;
-    padding: 10px 20px;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-light);
-    cursor: pointer;
-    font-family: inherit;
-    margin-bottom: -2px;
-    transition: color 0.2s, border-color 0.2s;
-}
-#tabBar .tab:hover {
-    color: var(--text);
-}
-#tabBar .tab.active {
-    color: var(--primary);
-    border-bottom-color: var(--primary);
 }
 
 /* ── View Container ── */

@@ -29,16 +29,9 @@
             <button id="btnMonthView" onclick="switchView('month')">Month</button>
         </div>
         <button id="btnAddTask" onclick="openTaskModal()">+ Add Task</button>
-        <button id="btnVoiceTask" onclick="startVoiceInput()" title="Speak a reminder">&#127908;</button>
         <button id="btnCategories" onclick="openCategoryModal()">Categories</button>
         <span id="syncStatus" class="sync-status"></span>
         <button id="btnSignOut" onclick="firebaseSignOut()">Sign Out</button>
-    </div>
-
-    <!-- Tabs -->
-    <div id="tabBar">
-        <button class="tab active" data-tab="google" onclick="switchTab('google')">Google Tasks</button>
-        <button class="tab" data-tab="phone" onclick="switchTab('phone')">Phone Notes</button>
     </div>
 
     <!-- View Container -->
