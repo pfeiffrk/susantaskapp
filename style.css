@@ -572,6 +572,37 @@ body {
     text-decoration: line-through;
     color: var(--text-light);
 }
+
+/* ── Done/Open link (shared) ── */
+.done-link {
+    font-size: 12px;
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.done-link:hover {
+    text-decoration: underline;
+}
+
+/* ── Table view done ── */
+.task-table tr.task-done td {
+    text-decoration: line-through;
+    color: var(--text-light);
+}
+.task-table tr.task-done td .done-link {
+    text-decoration: none;
+}
+
+/* ── Card view done ── */
+.task-card.task-done .card-title {
+    text-decoration: line-through;
+    color: var(--text-light);
+}
+.task-card.task-done .card-title .done-link {
+    text-decoration: none;
+}
 .calendar-task-done-link {
     font-size: 10px;
     color: var(--primary);

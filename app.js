@@ -284,23 +284,26 @@ function renderTableView() {
     html += buildSortHeader('Priority', 'priority');
     html += buildSortHeader('Start Date', 'startDate');
     html += buildSortHeader('Due Date', 'dueDate');
+    html += '<th></th>';
     html += '</tr></thead>';
     html += '<tbody>';
 
     if (sorted.length === 0) {
-        html += '<tr class="empty-row"><td colspan="5">No tasks yet. Click "+ Add Task" to get started.</td></tr>';
+        html += '<tr class="empty-row"><td colspan="6">No tasks yet. Click "+ Add Task" to get started.</td></tr>';
     } else {
         sorted.forEach(task => {
             const cat = categories.find(c => c.id === task.categoryId);
             const catDot = cat ? `<span class="cat-dot" style="background:${cat.color}"></span>` : '';
             const catName = cat ? cat.name : '';
             const pri = PRIORITY_LEVELS.find(p => p.value === (task.priority || 'low')) || PRIORITY_LEVELS[0];
-            html += `<tr onclick="openTaskModal('${task.id}')">`;
+            const doneClass = task.done ? ' class="task-done"' : '';
+            html += `<tr${doneClass} onclick="openTaskModal('${task.id}')">`;
             html += `<td>${escapeHtml(task.title)}</td>`;
             html += `<td>${catDot}<span class="cat-name">${escapeHtml(catName)}</span></td>`;
             html += `<td><span class="priority-badge" style="background:${pri.color}">${pri.label}</span></td>`;
             html += `<td>${formatDate(task.startDate)}</td>`;
             html += `<td>${formatDate(task.dueDate)}</td>`;
+            html += `<td><a class="done-link" href="#" onclick="event.stopPropagation();toggleTaskDone(event, '${task.id}')">${task.done ? 'Open' : 'Done'}</a></td>`;
             html += '</tr>';
         });
     }
@@ -381,9 +384,10 @@ function renderCardView() {
         </div>`;
 
         colTasks.forEach(task => {
-            html += `<div class="task-card" style="border-top-color:${col.color}" onclick="openTaskModal('${task.id}')" draggable="false">`;
+            const doneClass = task.done ? ' task-done' : '';
+            html += `<div class="task-card${doneClass}" style="border-top-color:${col.color}" onclick="openTaskModal('${task.id}')" draggable="false">`;
             const pri = PRIORITY_LEVELS.find(p => p.value === (task.priority || 'low')) || PRIORITY_LEVELS[0];
-            html += `<div class="card-title">${escapeHtml(task.title)} <span class="priority-badge small" style="background:${pri.color}">${pri.label}</span></div>`;
+            html += `<div class="card-title">${escapeHtml(task.title)} <span class="priority-badge small" style="background:${pri.color}">${pri.label}</span> <a class="done-link" href="#" onclick="event.stopPropagation();toggleTaskDone(event, '${task.id}')">${task.done ? 'Open' : 'Done'}</a></div>`;
             if (task.description) {
                 html += `<div class="card-desc">${escapeHtml(task.description)}</div>`;
             }
