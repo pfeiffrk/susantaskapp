@@ -546,13 +546,24 @@ function openTaskModalWithDate(dateStr) {
     }, 10);
 }
 
+function toggleTaskDone(e, taskId) {
+    e.stopPropagation();
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    task.done = !task.done;
+    scheduleSave();
+    renderView();
+}
+
 function renderCalendarTask(task) {
     const cat = categories.find(c => c.id === task.categoryId);
     const pri = PRIORITY_LEVELS.find(p => p.value === (task.priority || 'low')) || PRIORITY_LEVELS[0];
     const catColor = cat ? cat.color : '#999';
-    let html = `<div class="calendar-task" draggable="true" ondragstart="calendarDragStart(event, '${task.id}')" onclick="openTaskModal('${task.id}')" style="border-left-color:${catColor}">`;
+    const doneClass = task.done ? ' task-done' : '';
+    let html = `<div class="calendar-task${doneClass}" draggable="true" ondragstart="calendarDragStart(event, '${task.id}')" onclick="openTaskModal('${task.id}')" style="border-left-color:${catColor}">`;
     html += `<span class="calendar-task-title">${escapeHtml(task.title)}</span>`;
     html += `<span class="priority-badge small" style="background:${pri.color}">${pri.label}</span>`;
+    html += `<a class="calendar-task-done-link" href="#" onclick="toggleTaskDone(event, '${task.id}')">${task.done ? 'Open' : 'Done'}</a>`;
     html += '</div>';
     return html;
 }

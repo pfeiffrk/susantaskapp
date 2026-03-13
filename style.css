@@ -568,6 +568,22 @@ body {
     white-space: nowrap;
     min-width: 0;
 }
+.calendar-task.task-done .calendar-task-title {
+    text-decoration: line-through;
+    color: var(--text-light);
+}
+.calendar-task-done-link {
+    font-size: 10px;
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.calendar-task-done-link:hover {
+    text-decoration: underline;
+}
 .calendar-task-due {
     font-size: 10px;
     color: var(--text-light);
