@@ -251,6 +251,9 @@ body {
     font-size: 16px;
     color: var(--text);
 }
+.checkbox-col { width: 36px; text-align: center; cursor: default; }
+.checkbox-col input[type="checkbox"] { cursor: pointer; }
+#btnPermDelete:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ── Priority Badge ── */
 .priority-badge {

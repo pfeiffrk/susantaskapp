@@ -830,16 +830,16 @@ function showDeletedTasks() {
     let html = '<div class="deleted-tasks-view">';
     html += '<div class="deleted-tasks-header">';
     html += '<h3>Deleted Tasks</h3>';
-    if (deleted.length > 0) {
-        html += '<button class="btn-danger" onclick="permanentlyDeleteAll()">Delete Permanently</button>';
-    }
+    html += '<button id="btnPermDelete" class="btn-danger" onclick="permanentlyDeleteChecked()" disabled>Delete Permanently</button>';
     html += '</div>';
     html += '<div class="task-table-wrapper"><table class="task-table">';
-    html += '<thead><tr><th>Title</th><th>Category</th><th>Priority</th><th>Start Date</th><th>Due Date</th><th class="delete-col"></th></tr></thead>';
+    html += '<thead><tr>';
+    html += '<th class="checkbox-col"><input type="checkbox" id="deletedSelectAll" onchange="toggleDeletedSelectAll(this.checked)"></th>';
+    html += '<th>Title</th><th>Category</th><th>Priority</th><th>Start Date</th><th>Due Date</th><th class="delete-col"></th></tr></thead>';
     html += '<tbody>';
 
     if (deleted.length === 0) {
-        html += '<tr class="empty-row"><td colspan="6">No deleted tasks.</td></tr>';
+        html += '<tr class="empty-row"><td colspan="7">No deleted tasks.</td></tr>';
     } else {
         deleted.forEach(task => {
             const cat = categories.find(c => c.id === task.categoryId);
@@ -847,6 +847,7 @@ function showDeletedTasks() {
             const catName = cat ? cat.name : '';
             const pri = PRIORITY_LEVELS.find(p => p.value === (task.priority || 'low')) || PRIORITY_LEVELS[0];
             html += '<tr>';
+            html += `<td class="checkbox-col"><input type="checkbox" class="deleted-task-cb" data-id="${task.id}" onchange="updatePermDeleteBtn()"></td>`;
             html += `<td>${escapeHtml(task.title)}</td>`;
             html += `<td>${catDot}<span class="cat-name">${escapeHtml(catName)}</span></td>`;
             html += `<td><span class="priority-badge" style="background:${pri.color}">${pri.label}</span></td>`;
@@ -861,9 +862,27 @@ function showDeletedTasks() {
     container.innerHTML = html;
 }
 
-function permanentlyDeleteAll() {
-    if (!confirm('Permanently delete all deleted tasks? This cannot be undone.')) return;
-    tasks = tasks.filter(t => !t.deleted);
+function toggleDeletedSelectAll(checked) {
+    document.querySelectorAll('.deleted-task-cb').forEach(cb => { cb.checked = checked; });
+    updatePermDeleteBtn();
+}
+
+function updatePermDeleteBtn() {
+    const anyChecked = document.querySelectorAll('.deleted-task-cb:checked').length > 0;
+    const btn = document.getElementById('btnPermDelete');
+    if (btn) btn.disabled = !anyChecked;
+    const allCbs = document.querySelectorAll('.deleted-task-cb');
+    const selectAll = document.getElementById('deletedSelectAll');
+    if (selectAll && allCbs.length > 0) {
+        selectAll.checked = document.querySelectorAll('.deleted-task-cb:checked').length === allCbs.length;
+    }
+}
+
+function permanentlyDeleteChecked() {
+    const checkedIds = [...document.querySelectorAll('.deleted-task-cb:checked')].map(cb => cb.dataset.id);
+    if (checkedIds.length === 0) return;
+    if (!confirm(`Permanently delete ${checkedIds.length} task(s)? This cannot be undone.`)) return;
+    tasks = tasks.filter(t => !checkedIds.includes(t.id));
     showDeletedTasks();
     saveToFirebase();
 }
