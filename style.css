@@ -242,6 +242,36 @@ body {
     margin-left: 4px;
 }
 
+/* ── Delete Buttons ── */
+.delete-col { width: 40px; cursor: default !important; }
+.delete-col:hover { background: #f0f1f5 !important; }
+.task-delete-cell { width: 40px; text-align: center; }
+.btn-delete-inline {
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: #ccc;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    line-height: 1;
+}
+.btn-delete-inline:hover { color: var(--danger); background: #fee; }
+.btn-delete-card {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: none;
+    border: none;
+    font-size: 16px;
+    color: #ccc;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    line-height: 1;
+}
+.btn-delete-card:hover { color: var(--danger); background: #fee; }
+
 /* ── Card / Kanban View ── */
 .card-view {
     display: flex;
@@ -309,6 +339,15 @@ body {
 }
 .col-drop-indicator::before { top: -4px; }
 .col-drop-indicator::after { bottom: -4px; }
+.card-column-tasks {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+    max-height: calc(100vh - 160px);
+}
 .card-column-add {
     background: none;
     border: 1px dashed #bbb;
@@ -330,6 +369,7 @@ body {
     cursor: pointer;
     transition: box-shadow 0.15s, transform 0.15s;
     border-top: 3px solid #ccc;
+    position: relative;
 }
 .task-card:hover {
     box-shadow: 0 3px 10px rgba(0,0,0,0.14);
@@ -642,12 +682,12 @@ body {
 }
 .calendar-unscheduled-list {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: 6px;
     padding: 8px 12px 10px;
 }
 .calendar-unscheduled-list .calendar-task {
-    max-width: 260px;
+    max-width: none;
 }
 .calendar-empty {
     font-size: 12px;

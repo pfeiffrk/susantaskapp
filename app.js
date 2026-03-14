@@ -9,18 +9,12 @@ const FIREBASE_CONFIG = {
     appId: "1:890920806003:web:d9bcb77be35a3a9f09ec06"
 };
 
-// ── Storage Keys ──
-const TASKS_KEY = 'taskapp_tasks';
-const CATEGORIES_KEY = 'taskapp_categories';
-const SETTINGS_KEY = 'taskapp_settings';
-
 // ── State ──
 let tasks = [];
 let categories = [];
 let settings = { view: 'table', sortField: 'dueDate', sortDir: 'asc' };
 let firebaseUser = null;
-let cloudSyncTimer = null;
-let firebaseConfigured = false;
+let dataListener = null;
 
 // ── Default Categories ──
 const DEFAULT_CATEGORIES = [
@@ -46,53 +40,82 @@ function formatDate(dateStr) {
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-// ── Persistence ──
-function saveToLocal() {
-    localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
-    localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+// ── Firebase Helpers ──
+function userRef() {
+    return firebase.database().ref('users/' + firebaseUser.uid);
 }
 
-function loadFromLocal() {
-    try {
-        const t = localStorage.getItem(TASKS_KEY);
-        const c = localStorage.getItem(CATEGORIES_KEY);
-        const s = localStorage.getItem(SETTINGS_KEY);
-        tasks = t ? JSON.parse(t) : [];
-        categories = c ? JSON.parse(c) : [...DEFAULT_CATEGORIES];
-        settings = s ? JSON.parse(s) : { view: 'table', sortField: 'dueDate', sortDir: 'asc' };
-        if (settings.view === 'calendar') settings.view = 'week';
-    } catch (e) {
-        console.warn('Failed to load from localStorage:', e);
-        tasks = [];
-        categories = [...DEFAULT_CATEGORIES];
-        settings = { view: 'table', sortField: 'dueDate', sortDir: 'asc' };
+function saveToFirebase() {
+    if (!firebaseUser) return;
+    const statusEl = document.getElementById('syncStatus');
+    statusEl.textContent = 'Saving...';
+    userRef().update({
+        taskapp_tasks: JSON.stringify(tasks),
+        taskapp_categories: JSON.stringify(categories),
+        taskapp_settings: JSON.stringify(settings),
+        taskapp_lastModified: Date.now()
+    }).then(() => {
+        statusEl.textContent = 'Saved';
+        setTimeout(() => { if (statusEl.textContent === 'Saved') statusEl.textContent = ''; }, 3000);
+    }).catch(e => {
+        console.warn('Save failed:', e);
+        statusEl.textContent = 'Save error';
+    });
+}
+
+function startDataListener() {
+    if (dataListener) return;
+    const statusEl = document.getElementById('syncStatus');
+    statusEl.textContent = 'Loading...';
+    dataListener = userRef().on('value', snap => {
+        const data = snap.val();
+        if (data) {
+            try { tasks = JSON.parse(data.taskapp_tasks || '[]'); } catch (e) { tasks = []; }
+            try { categories = JSON.parse(data.taskapp_categories || '[]'); } catch (e) { categories = []; }
+            try {
+                settings = JSON.parse(data.taskapp_settings || '{}');
+                if (!settings.view) settings = { view: 'table', sortField: 'dueDate', sortDir: 'asc' };
+                if (settings.view === 'calendar') settings.view = 'week';
+            } catch (e) {
+                settings = { view: 'table', sortField: 'dueDate', sortDir: 'asc' };
+            }
+            if (categories.length === 0) categories = [...DEFAULT_CATEGORIES];
+        } else {
+            // First time user — initialize with defaults
+            tasks = [];
+            categories = [...DEFAULT_CATEGORIES];
+            settings = { view: 'table', sortField: 'dueDate', sortDir: 'asc' };
+            saveToFirebase();
+        }
+        statusEl.textContent = '';
+        updateViewToggle();
+        renderView();
+    });
+}
+
+function stopDataListener() {
+    if (dataListener && firebaseUser) {
+        userRef().off('value', dataListener);
     }
-}
-
-function scheduleSave() {
-    saveToLocal();
-    syncToCloud();
+    dataListener = null;
 }
 
 // ── Firebase Auth ──
 function initFirebase() {
-    firebaseConfigured = FIREBASE_CONFIG.apiKey !== 'AIzaSyDummyKeyReplaceMeWithYourKey'
-        && FIREBASE_CONFIG.projectId !== 'YOUR_PROJECT';
-    if (!firebaseConfigured) {
-        onAuthReady(null);
-        return;
-    }
     firebase.initializeApp(FIREBASE_CONFIG);
     firebase.auth().onAuthStateChanged(user => {
         if (user) {
             firebaseUser = user;
-            syncFromCloud().then(() => {
-                document.getElementById('signInScreen').classList.remove('show');
-                onAuthReady(user);
-            });
+            document.getElementById('signInScreen').classList.remove('show');
+            document.getElementById('app').style.display = 'flex';
+            startDataListener();
         } else {
+            stopDataListener();
             firebaseUser = null;
+            tasks = [];
+            categories = [];
+            settings = { view: 'table', sortField: 'dueDate', sortDir: 'asc' };
+            document.getElementById('app').style.display = 'none';
             showSignInScreen();
         }
     });
@@ -104,13 +127,12 @@ function showSignInScreen() {
     screen.classList.add('show');
     box.innerHTML = `
         <h2>Task List</h2>
-        <p>Sign in to sync tasks across devices</p>
+        <p>Sign in to access your tasks</p>
         <input type="email" id="authEmail" placeholder="Email" autofocus>
         <input type="password" id="authPassword" placeholder="Password">
         <div class="auth-error" id="authError"></div>
         <button onclick="firebaseSignIn()">Sign In</button>
         <button onclick="firebaseSignUp()" style="background:#5cb85c;border-color:#5cb85c;">Create Account</button>
-        <button class="auth-secondary" onclick="skipSignIn()">Use offline (this device only)</button>
         <button class="auth-secondary" onclick="firebaseForgotPassword()">Forgot password?</button>
     `;
     setTimeout(() => { const el = document.getElementById('authEmail'); if (el) el.focus(); }, 50);
@@ -160,86 +182,13 @@ async function firebaseForgotPassword() {
     }
 }
 
-function skipSignIn() {
-    document.getElementById('signInScreen').classList.remove('show');
-    onAuthReady(null);
-}
-
 function firebaseSignOut() {
-    if (!confirm('Sign out? Local data will be cleared.')) return;
-    if (firebaseConfigured && firebase.apps.length) {
-        firebase.auth().signOut();
-    }
-    firebaseUser = null;
-    localStorage.removeItem(TASKS_KEY);
-    localStorage.removeItem(CATEGORIES_KEY);
-    localStorage.removeItem(SETTINGS_KEY);
-    location.reload();
-}
-
-// ── Cloud Sync ──
-async function syncFromCloud() {
-    if (!firebaseUser) return;
-    const statusEl = document.getElementById('syncStatus');
-    statusEl.textContent = 'Syncing...';
-    try {
-        const snap = await firebase.database().ref('users/' + firebaseUser.uid).once('value');
-        const data = snap.val();
-        if (!data) {
-            await doCloudUpload();
-            statusEl.textContent = 'Synced';
-            return;
-        }
-        // Download taskapp-specific keys
-        const keys = [TASKS_KEY, CATEGORIES_KEY, SETTINGS_KEY];
-        keys.forEach(key => {
-            if (data[key] !== undefined && data[key] !== null) {
-                localStorage.setItem(key, data[key]);
-            }
-        });
-        loadFromLocal();
-        statusEl.textContent = 'Synced';
-    } catch (e) {
-        console.warn('Cloud sync download failed:', e);
-        statusEl.textContent = 'Sync error';
-    }
-}
-
-function syncToCloud() {
-    if (!firebaseUser) return;
-    clearTimeout(cloudSyncTimer);
-    cloudSyncTimer = setTimeout(() => doCloudUpload(), 2000);
-}
-
-async function doCloudUpload() {
-    if (!firebaseUser) return;
-    const statusEl = document.getElementById('syncStatus');
-    statusEl.textContent = 'Saving...';
-    try {
-        const updates = {};
-        const keys = [TASKS_KEY, CATEGORIES_KEY, SETTINGS_KEY];
-        keys.forEach(key => {
-            const val = localStorage.getItem(key);
-            if (val !== null) updates[key] = val;
-        });
-        updates.taskapp_lastModified = Date.now();
-        await firebase.database().ref('users/' + firebaseUser.uid).update(updates);
-        statusEl.textContent = 'Saved';
-        setTimeout(() => { if (statusEl.textContent === 'Saved') statusEl.textContent = ''; }, 3000);
-    } catch (e) {
-        console.warn('Cloud save failed:', e);
-        statusEl.textContent = 'Save error';
-    }
+    if (!confirm('Sign out?')) return;
+    stopDataListener();
+    firebase.auth().signOut();
 }
 
 // ── App Init ──
-function onAuthReady(user) {
-    loadFromLocal();
-    document.getElementById('app').style.display = 'flex';
-    updateViewToggle();
-    renderView();
-}
-
 function initApp() {
     initFirebase();
 }
@@ -248,8 +197,8 @@ function initApp() {
 function switchView(view) {
     settings.view = view;
     updateViewToggle();
-    scheduleSave();
     renderView();
+    saveToFirebase();
 }
 
 function updateViewToggle() {
@@ -285,11 +234,12 @@ function renderTableView() {
     html += buildSortHeader('Start Date', 'startDate');
     html += buildSortHeader('Due Date', 'dueDate');
     html += '<th></th>';
+    html += '<th class="delete-col"></th>';
     html += '</tr></thead>';
     html += '<tbody>';
 
     if (sorted.length === 0) {
-        html += '<tr class="empty-row"><td colspan="6">No tasks yet. Click "+ Add Task" to get started.</td></tr>';
+        html += '<tr class="empty-row"><td colspan="7">No tasks yet. Click "+ Add Task" to get started.</td></tr>';
     } else {
         sorted.forEach(task => {
             const cat = categories.find(c => c.id === task.categoryId);
@@ -304,6 +254,7 @@ function renderTableView() {
             html += `<td>${formatDate(task.startDate)}</td>`;
             html += `<td>${formatDate(task.dueDate)}</td>`;
             html += `<td><a class="done-link" href="#" onclick="event.stopPropagation();toggleTaskDone(event, '${task.id}')">${task.done ? 'Open' : 'Done'}</a></td>`;
+            html += `<td class="task-delete-cell"><button class="btn-delete-inline" onclick="event.stopPropagation();deleteTaskDirect('${task.id}')" title="Delete">&times;</button></td>`;
             html += '</tr>';
         });
     }
@@ -326,8 +277,8 @@ function toggleSort(field) {
         settings.sortField = field;
         settings.sortDir = 'asc';
     }
-    scheduleSave();
     renderView();
+    saveToFirebase();
 }
 
 function getSortedTasks() {
@@ -383,9 +334,11 @@ function renderCardView() {
             <span class="col-count">${colTasks.length}</span>
         </div>`;
 
+        html += '<div class="card-column-tasks">';
         colTasks.forEach(task => {
             const doneClass = task.done ? ' task-done' : '';
             html += `<div class="task-card${doneClass}" style="border-top-color:${col.color}" onclick="openTaskModal('${task.id}')" draggable="false">`;
+            html += `<button class="btn-delete-card" onclick="event.stopPropagation();deleteTaskDirect('${task.id}')" title="Delete">&times;</button>`;
             const pri = PRIORITY_LEVELS.find(p => p.value === (task.priority || 'low')) || PRIORITY_LEVELS[0];
             html += `<div class="card-title">${escapeHtml(task.title)} <span class="priority-badge small" style="background:${pri.color}">${pri.label}</span> <a class="done-link" href="#" onclick="event.stopPropagation();toggleTaskDone(event, '${task.id}')">${task.done ? 'Open' : 'Done'}</a></div>`;
             if (task.description) {
@@ -400,6 +353,7 @@ function renderCardView() {
             html += '</div>';
         });
 
+        html += '</div>';
         html += `<button class="card-column-add" onclick="openTaskModal(null, '${col.id}')">+ Add Task</button>`;
         html += '</div>';
     });
@@ -480,8 +434,8 @@ function cardColDragStart(e, catId) {
 
             cardDragCatId = null;
             removeDropIndicator();
-            scheduleSave();
             renderCardView();
+            saveToFirebase();
         };
 
         cardView.addEventListener('dragover', cardView._onDragOver);
@@ -537,8 +491,8 @@ function calendarDrop(e, dateStr) {
     const task = tasks.find(t => t.id === calendarDragTaskId);
     if (task) {
         task.startDate = dateStr;
-        scheduleSave();
         renderView();
+        saveToFirebase();
     }
     calendarDragTaskId = null;
 }
@@ -555,8 +509,8 @@ function toggleTaskDone(e, taskId) {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
     task.done = !task.done;
-    scheduleSave();
     renderView();
+    saveToFirebase();
 }
 
 function renderCalendarTask(task) {
@@ -842,8 +796,8 @@ function saveTask() {
     }
 
     closeTaskModal();
-    scheduleSave();
     renderView();
+    saveToFirebase();
 }
 
 function deleteTask() {
@@ -852,8 +806,15 @@ function deleteTask() {
     if (!confirm('Delete this task?')) return;
     tasks = tasks.filter(t => t.id !== id);
     closeTaskModal();
-    scheduleSave();
     renderView();
+    saveToFirebase();
+}
+
+function deleteTaskDirect(id) {
+    if (!confirm('Delete this task?')) return;
+    tasks = tasks.filter(t => t.id !== id);
+    renderView();
+    saveToFirebase();
 }
 
 // ── Category Modal ──
@@ -893,8 +854,8 @@ function addCategory() {
     categories.push({ id: generateId(), name, color: colorEl.value });
     nameEl.value = '';
     colorEl.value = '#4a90d9';
-    scheduleSave();
     renderCategoryList();
+    saveToFirebase();
 }
 
 function updateCategory(id, name, color) {
@@ -902,7 +863,7 @@ function updateCategory(id, name, color) {
     if (!cat) return;
     if (name !== null) cat.name = name;
     if (color !== null) cat.color = color;
-    scheduleSave();
+    saveToFirebase();
 }
 
 function deleteCategoryById(id) {
@@ -912,8 +873,8 @@ function deleteCategoryById(id) {
     categories = categories.filter(c => c.id !== id);
     // Clear categoryId from tasks that used this category
     tasks.forEach(t => { if (t.categoryId === id) t.categoryId = ''; });
-    scheduleSave();
     renderCategoryList();
+    saveToFirebase();
 }
 
 // ── Helpers ──
