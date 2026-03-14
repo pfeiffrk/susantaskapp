@@ -195,6 +195,7 @@ function initApp() {
 
 // ── View Switching ──
 function switchView(view) {
+    showingDeleted = false;
     settings.view = view;
     updateViewToggle();
     renderView();
@@ -209,8 +210,12 @@ function updateViewToggle() {
 }
 
 // ── Rendering ──
+let showingDeleted = false;
+
 function renderView() {
-    if (settings.view === 'cards') {
+    if (showingDeleted) {
+        showDeletedTasks();
+    } else if (settings.view === 'cards') {
         renderCardView();
     } else if (settings.view === 'week') {
         renderWeekView();
@@ -818,6 +823,7 @@ function deleteTaskDirect(id) {
 }
 
 function showDeletedTasks() {
+    showingDeleted = true;
     const container = document.getElementById('viewContainer');
     const deleted = tasks.filter(t => t.deleted);
 
