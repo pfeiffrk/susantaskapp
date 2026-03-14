@@ -1035,6 +1035,34 @@ function deleteCategoryById(id) {
     saveToFirebase();
 }
 
+// ── Export ──
+function exportToExcel() {
+    const activeTasks = tasks.filter(t => !t.deleted);
+    const rows = [['Title', 'Description', 'Category', 'Priority', 'Start Date', 'Due Date', 'Status']];
+    activeTasks.forEach(task => {
+        const cat = categories.find(c => c.id === task.categoryId);
+        rows.push([
+            task.title || '',
+            task.description || '',
+            cat ? cat.name : '',
+            (task.priority || 'low').charAt(0).toUpperCase() + (task.priority || 'low').slice(1),
+            task.startDate || '',
+            task.dueDate || '',
+            task.done ? 'Done' : 'Open'
+        ]);
+    });
+    let csv = rows.map(row =>
+        row.map(cell => '"' + String(cell).replace(/"/g, '""') + '"').join(',')
+    ).join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'tasks.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
 // ── Helpers ──
 function escapeHtml(str) {
     if (!str) return '';
