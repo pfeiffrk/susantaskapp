@@ -18,39 +18,29 @@
 
 <!-- Main App -->
 <div id="app" style="display:none;">
-    <!-- Top Bar -->
-    <div id="topBar">
-        <button id="btnUndo" onclick="undo()" disabled title="Undo (Ctrl+Z)">&#8592; Undo</button>
-        <button id="btnRedo" onclick="redo()" disabled title="Redo (Ctrl+Y)">Redo &#8594;</button>
-        <button id="btnExport" onclick="exportToExcel()" title="Export to Excel">Export</button>
-    </div>
-
-    <!-- Main Content Row -->
-    <div id="appContent">
-        <!-- Toolbar / Sidebar -->
-        <div id="toolbar">
-            <span id="appTitle">Tasks</span>
-            <div class="toolbar-spacer"></div>
-            <div id="viewToggle">
-                <button id="btnTableView" class="active" onclick="switchView('table')">Table</button>
-                <button id="btnCardView" onclick="switchView('cards')">Cards</button>
-                <button id="btnWeekView" onclick="switchView('week')">Week</button>
-                <button id="btnMonthView" onclick="switchView('month')">Month</button>
-                <button id="btnDeletedView" onclick="switchView('deleted')">Deleted Tasks</button>
-            </div>
-            <button id="btnAddTask" onclick="openTaskModal()">+ Add Task</button>
-            <button id="btnCategories" onclick="openCategoryModal()">Categories</button>
-            <label id="showDoneToggle" class="sidebar-checkbox">
-                <input type="checkbox" id="cbShowDone" checked onchange="toggleShowDone(this.checked)">
-                Show Done
-            </label>
-            <span id="syncStatus" class="sync-status"></span>
-            <button id="btnSignOut" onclick="firebaseSignOut()">Sign Out</button>
+    <!-- Toolbar -->
+    <div id="toolbar">
+        <span id="appTitle">Tasks</span>
+        <div class="toolbar-spacer"></div>
+        <div id="viewToggle">
+            <button id="btnTableView" class="active" onclick="switchView('table')">Table</button>
+            <button id="btnCardView" onclick="switchView('cards')">Cards</button>
+            <button id="btnWeekView" onclick="switchView('week')">Week</button>
+            <button id="btnMonthView" onclick="switchView('month')">Month</button>
+            <button id="btnDeletedView" onclick="switchView('deleted')">Deleted Tasks</button>
         </div>
-
-        <!-- View Container -->
-        <div id="viewContainer"></div>
+        <button id="btnAddTask" onclick="openTaskModal()">+ Add Task</button>
+        <button id="btnCategories" onclick="openCategoryModal()">Categories</button>
+        <label id="showDoneToggle" class="sidebar-checkbox">
+            <input type="checkbox" id="cbShowDone" checked onchange="toggleShowDone(this.checked)">
+            Show Done
+        </label>
+        <span id="syncStatus" class="sync-status"></span>
+        <button id="btnSignOut" onclick="firebaseSignOut()">Sign Out</button>
     </div>
+
+    <!-- View Container -->
+    <div id="viewContainer"></div>
 </div>
 
 <!-- Task Modal -->
