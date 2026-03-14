@@ -45,8 +45,69 @@ function userRef() {
     return firebase.database().ref('users/' + firebaseUser.uid);
 }
 
+// ── Undo / Redo ──
+const undoStack = [];
+const redoStack = [];
+const MAX_UNDO = 50;
+let skipSnapshot = false;
+
+function takeSnapshot() {
+    undoStack.push({
+        tasks: JSON.stringify(tasks),
+        categories: JSON.stringify(categories)
+    });
+    if (undoStack.length > MAX_UNDO) undoStack.shift();
+    redoStack.length = 0;
+    updateUndoRedoButtons();
+}
+
+function undo() {
+    if (undoStack.length === 0) return;
+    redoStack.push({
+        tasks: JSON.stringify(tasks),
+        categories: JSON.stringify(categories)
+    });
+    const snap = undoStack.pop();
+    tasks = JSON.parse(snap.tasks);
+    categories = JSON.parse(snap.categories);
+    updateUndoRedoButtons();
+    renderView();
+    skipSnapshot = true;
+    saveToFirebase();
+}
+
+function redo() {
+    if (redoStack.length === 0) return;
+    undoStack.push({
+        tasks: JSON.stringify(tasks),
+        categories: JSON.stringify(categories)
+    });
+    const snap = redoStack.pop();
+    tasks = JSON.parse(snap.tasks);
+    categories = JSON.parse(snap.categories);
+    updateUndoRedoButtons();
+    renderView();
+    skipSnapshot = true;
+    saveToFirebase();
+}
+
+function updateUndoRedoButtons() {
+    const btnUndo = document.getElementById('btnUndo');
+    const btnRedo = document.getElementById('btnRedo');
+    if (btnUndo) btnUndo.disabled = undoStack.length === 0;
+    if (btnRedo) btnRedo.disabled = redoStack.length === 0;
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+    if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
+    if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }
+});
+
 function saveToFirebase() {
     if (!firebaseUser) return;
+    if (!skipSnapshot) takeSnapshot();
+    skipSnapshot = false;
     const statusEl = document.getElementById('syncStatus');
     statusEl.textContent = 'Saving...';
     userRef().update({
@@ -966,6 +1027,37 @@ function deleteCategoryById(id) {
     tasks.forEach(t => { if (t.categoryId === id) t.categoryId = ''; });
     renderCategoryList();
     saveToFirebase();
+}
+
+// ── Export ──
+function exportToExcel() {
+    const activeTasks = tasks.filter(t => !t.deleted);
+    const rows = [['Title', 'Description', 'Category', 'Priority', 'Start Date', 'Due Date', 'Status']];
+
+    activeTasks.forEach(task => {
+        const cat = categories.find(c => c.id === task.categoryId);
+        rows.push([
+            task.title || '',
+            task.description || '',
+            cat ? cat.name : '',
+            (task.priority || 'low').charAt(0).toUpperCase() + (task.priority || 'low').slice(1),
+            task.startDate || '',
+            task.dueDate || '',
+            task.done ? 'Done' : 'Open'
+        ]);
+    });
+
+    let csv = rows.map(row =>
+        row.map(cell => '"' + String(cell).replace(/"/g, '""') + '"').join(',')
+    ).join('\n');
+
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'tasks.csv';
+    a.click();
+    URL.revokeObjectURL(url);
 }
 
 // ── Helpers ──

@@ -97,10 +97,39 @@ body {
 
 /* ── App Layout ── */
 #app {
-    flex-direction: row !important;
+    flex-direction: column !important;
     height: 100vh;
     overflow: hidden;
 }
+#appContent {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+    min-height: 0;
+}
+
+/* ── Top Bar ── */
+#topBar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    background: #e8e8e8;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+#topBar button {
+    background: #fff;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    padding: 3px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--text);
+}
+#topBar button:hover:not(:disabled) { background: #e0e0e0; }
+#topBar button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ── Toolbar / Sidebar ── */
 #toolbar {
@@ -113,7 +142,6 @@ body {
     user-select: none;
     flex-shrink: 0;
     width: 140px;
-    height: 100vh;
     overflow-y: auto;
 }
 #appTitle {
@@ -929,7 +957,7 @@ body {
 
 /* ── Responsive ── */
 @media (max-width: 768px) {
-    #app { flex-direction: column !important; }
+    #appContent { flex-direction: column; }
     #toolbar {
         flex-direction: row;
         flex-wrap: wrap;
