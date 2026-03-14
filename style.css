@@ -98,6 +98,8 @@ body {
 /* ── App Layout ── */
 #app {
     flex-direction: row !important;
+    height: 100vh;
+    overflow: hidden;
 }
 
 /* ── Toolbar / Sidebar ── */
@@ -178,8 +180,9 @@ body {
 /* ── View Container ── */
 #viewContainer {
     flex: 1;
-    overflow: auto;
+    overflow-y: auto;
     padding: 16px;
+    min-height: 0;
 }
 
 /* ── Table View ── */
