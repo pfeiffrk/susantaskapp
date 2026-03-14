@@ -282,7 +282,7 @@ function toggleSort(field) {
 }
 
 function getSortedTasks() {
-    const sorted = [...tasks];
+    const sorted = tasks.filter(t => !t.deleted);
     const field = settings.sortField;
     const dir = settings.sortDir === 'asc' ? 1 : -1;
 
@@ -323,7 +323,7 @@ function renderCardView() {
     columns.push({ id: '', name: 'Uncategorized', color: '#999' });
 
     columns.forEach(col => {
-        const colTasks = tasks.filter(t => (t.categoryId || '') === col.id);
+        const colTasks = tasks.filter(t => !t.deleted && (t.categoryId || '') === col.id);
         const draggable = col.id ? 'draggable="true"' : '';
         const dragHandlers = col.id
             ? `ondragstart="cardColDragStart(event, '${col.id}')" ondragend="cardColDragEnd(event)"`
@@ -525,7 +525,7 @@ function renderCalendarTask(task) {
 }
 
 function renderUnscheduledSection() {
-    const unscheduled = tasks.filter(t => !t.startDate);
+    const unscheduled = tasks.filter(t => !t.deleted && !t.startDate);
     let html = '<div class="calendar-unscheduled">';
     html += '<div class="calendar-unscheduled-header">';
     html += `<span>Unscheduled (${unscheduled.length})</span>`;
@@ -590,7 +590,7 @@ function renderWeekView() {
         const dateStr = toDateStr(day);
         const isToday = dateStr === todayStr;
         const dayLabel = day.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        const dayTasks = tasks.filter(t => t.startDate === dateStr);
+        const dayTasks = tasks.filter(t => !t.deleted && t.startDate === dateStr);
 
         html += `<div class="calendar-day${isToday ? ' today' : ''}" data-date="${dateStr}" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="calendarDrop(event, '${dateStr}')">`;
         html += `<div class="calendar-day-header"><span class="calendar-day-name">${dayNames[i]}</span><span class="calendar-day-date">${dayLabel}</span></div>`;
@@ -669,7 +669,7 @@ function renderMonthView() {
             const dateStr = toDateStr(cursor);
             const isToday = dateStr === todayStr;
             const isCurrentMonth = cursor.getMonth() === month;
-            const dayTasks = tasks.filter(t => t.startDate === dateStr);
+            const dayTasks = tasks.filter(t => !t.deleted && t.startDate === dateStr);
 
             let cls = 'month-cell';
             if (isToday) cls += ' today';
@@ -802,7 +802,8 @@ function deleteTask() {
     const id = document.getElementById('taskId').value;
     if (!id) return;
     if (!confirm('Delete this task?')) return;
-    tasks = tasks.filter(t => t.id !== id);
+    const task = tasks.find(t => t.id === id);
+    if (task) task.deleted = true;
     closeTaskModal();
     renderView();
     saveToFirebase();
@@ -810,8 +811,61 @@ function deleteTask() {
 
 function deleteTaskDirect(id) {
     if (!confirm('Delete this task?')) return;
-    tasks = tasks.filter(t => t.id !== id);
+    const task = tasks.find(t => t.id === id);
+    if (task) task.deleted = true;
     renderView();
+    saveToFirebase();
+}
+
+function showDeletedTasks() {
+    const container = document.getElementById('viewContainer');
+    const deleted = tasks.filter(t => t.deleted);
+
+    let html = '<div class="deleted-tasks-view">';
+    html += '<div class="deleted-tasks-header">';
+    html += '<h3>Deleted Tasks</h3>';
+    if (deleted.length > 0) {
+        html += '<button class="btn-danger" onclick="permanentlyDeleteAll()">Delete Permanently</button>';
+    }
+    html += '</div>';
+    html += '<div class="task-table-wrapper"><table class="task-table">';
+    html += '<thead><tr><th>Title</th><th>Category</th><th>Priority</th><th>Start Date</th><th>Due Date</th><th class="delete-col"></th></tr></thead>';
+    html += '<tbody>';
+
+    if (deleted.length === 0) {
+        html += '<tr class="empty-row"><td colspan="6">No deleted tasks.</td></tr>';
+    } else {
+        deleted.forEach(task => {
+            const cat = categories.find(c => c.id === task.categoryId);
+            const catDot = cat ? `<span class="cat-dot" style="background:${cat.color}"></span>` : '';
+            const catName = cat ? cat.name : '';
+            const pri = PRIORITY_LEVELS.find(p => p.value === (task.priority || 'low')) || PRIORITY_LEVELS[0];
+            html += '<tr>';
+            html += `<td>${escapeHtml(task.title)}</td>`;
+            html += `<td>${catDot}<span class="cat-name">${escapeHtml(catName)}</span></td>`;
+            html += `<td><span class="priority-badge" style="background:${pri.color}">${pri.label}</span></td>`;
+            html += `<td>${formatDate(task.startDate)}</td>`;
+            html += `<td>${formatDate(task.dueDate)}</td>`;
+            html += `<td class="task-delete-cell"><button class="btn-delete-inline" onclick="restoreTask('${task.id}')" title="Restore">&#8634;</button></td>`;
+            html += '</tr>';
+        });
+    }
+
+    html += '</tbody></table></div></div>';
+    container.innerHTML = html;
+}
+
+function permanentlyDeleteAll() {
+    if (!confirm('Permanently delete all deleted tasks? This cannot be undone.')) return;
+    tasks = tasks.filter(t => !t.deleted);
+    showDeletedTasks();
+    saveToFirebase();
+}
+
+function restoreTask(id) {
+    const task = tasks.find(t => t.id === id);
+    if (task) task.deleted = false;
+    showDeletedTasks();
     saveToFirebase();
 }
 

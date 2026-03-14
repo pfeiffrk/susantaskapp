@@ -240,6 +240,18 @@ body {
     cursor: default;
 }
 
+/* ── Deleted Tasks View ── */
+.deleted-tasks-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+.deleted-tasks-header h3 {
+    font-size: 16px;
+    color: var(--text);
+}
+
 /* ── Priority Badge ── */
 .priority-badge {
     display: inline-block;
