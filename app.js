@@ -73,9 +73,11 @@ function startDataListener() {
             try { tasks = JSON.parse(data.taskapp_tasks || '[]'); } catch (e) { tasks = []; }
             try { categories = JSON.parse(data.taskapp_categories || '[]'); } catch (e) { categories = []; }
             try {
+                const currentView = settings.view;
                 settings = JSON.parse(data.taskapp_settings || '{}');
                 if (!settings.view) settings = { view: 'table', sortField: 'dueDate', sortDir: 'asc' };
                 if (settings.view === 'calendar') settings.view = 'week';
+                if (currentView === 'deleted') settings.view = 'deleted';
             } catch (e) {
                 settings = { view: 'table', sortField: 'dueDate', sortDir: 'asc' };
             }
