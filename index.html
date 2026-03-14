@@ -36,6 +36,10 @@
             Show Done
         </label>
         <span id="syncStatus" class="sync-status"></span>
+        <div id="undoRedoBar">
+            <button id="btnUndo" onclick="undo()" disabled title="Undo (Ctrl+Z)">&#8592; Undo</button>
+            <button id="btnRedo" onclick="redo()" disabled title="Redo (Ctrl+Y)">Redo &#8594;</button>
+        </div>
         <button id="btnSignOut" onclick="firebaseSignOut()">Sign Out</button>
     </div>
 

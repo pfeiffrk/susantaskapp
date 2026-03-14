@@ -166,9 +166,24 @@ body {
 }
 #btnAddTask:hover { background: var(--primary-hover) !important; }
 
-#btnSignOut {
+#undoRedoBar {
+    display: flex;
+    gap: 4px;
     margin-top: auto;
 }
+#undoRedoBar button {
+    flex: 1;
+    background: #fff;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    padding: 4px 6px;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--text);
+}
+#undoRedoBar button:hover:not(:disabled) { background: #e0e0e0; }
+#undoRedoBar button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .sidebar-checkbox {
     display: flex;
