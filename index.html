@@ -31,6 +31,10 @@
         </div>
         <button id="btnAddTask" onclick="openTaskModal()">+ Add Task</button>
         <button id="btnCategories" onclick="openCategoryModal()">Categories</button>
+        <label id="showDoneToggle" class="sidebar-checkbox">
+            <input type="checkbox" id="cbShowDone" checked onchange="toggleShowDone(this.checked)">
+            Show Done
+        </label>
         <span id="syncStatus" class="sync-status"></span>
         <button id="btnSignOut" onclick="firebaseSignOut()">Sign Out</button>
     </div>

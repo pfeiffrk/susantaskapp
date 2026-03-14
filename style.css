@@ -170,6 +170,19 @@ body {
     margin-top: auto;
 }
 
+.sidebar-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text);
+    cursor: pointer;
+    padding: 2px 0;
+}
+.sidebar-checkbox input[type="checkbox"] {
+    cursor: pointer;
+}
+
 .sync-status {
     font-size: 11px;
     color: var(--text-light);

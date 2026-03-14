@@ -195,6 +195,18 @@ function initApp() {
     initFirebase();
 }
 
+// ── Show/Hide Done ──
+let showDone = true;
+
+function toggleShowDone(checked) {
+    showDone = checked;
+    renderView();
+}
+
+function getActiveTasks() {
+    return tasks.filter(t => !t.deleted && (showDone || !t.done));
+}
+
 // ── View Switching ──
 function switchView(view) {
     settings.view = view;
@@ -209,6 +221,7 @@ function updateViewToggle() {
     document.getElementById('btnWeekView').classList.toggle('active', settings.view === 'week');
     document.getElementById('btnMonthView').classList.toggle('active', settings.view === 'month');
     document.getElementById('btnDeletedView').classList.toggle('active', settings.view === 'deleted');
+    document.getElementById('showDoneToggle').style.display = settings.view === 'deleted' ? 'none' : '';
 }
 
 // ── Rendering ──
@@ -287,7 +300,7 @@ function toggleSort(field) {
 }
 
 function getSortedTasks() {
-    const sorted = tasks.filter(t => !t.deleted);
+    const sorted = [...getActiveTasks()];
     const field = settings.sortField;
     const dir = settings.sortDir === 'asc' ? 1 : -1;
 
@@ -328,7 +341,7 @@ function renderCardView() {
     columns.push({ id: '', name: 'Uncategorized', color: '#999' });
 
     columns.forEach(col => {
-        const colTasks = tasks.filter(t => !t.deleted && (t.categoryId || '') === col.id);
+        const colTasks = getActiveTasks().filter(t => (t.categoryId || '') === col.id);
         const draggable = col.id ? 'draggable="true"' : '';
         const dragHandlers = col.id
             ? `ondragstart="cardColDragStart(event, '${col.id}')" ondragend="cardColDragEnd(event)"`
@@ -530,7 +543,7 @@ function renderCalendarTask(task) {
 }
 
 function renderUnscheduledSection() {
-    const unscheduled = tasks.filter(t => !t.deleted && !t.startDate);
+    const unscheduled = getActiveTasks().filter(t => !t.startDate);
     let html = '<div class="calendar-unscheduled">';
     html += '<div class="calendar-unscheduled-header">';
     html += `<span>Unscheduled (${unscheduled.length})</span>`;
@@ -595,7 +608,7 @@ function renderWeekView() {
         const dateStr = toDateStr(day);
         const isToday = dateStr === todayStr;
         const dayLabel = day.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        const dayTasks = tasks.filter(t => !t.deleted && t.startDate === dateStr);
+        const dayTasks = getActiveTasks().filter(t => t.startDate === dateStr);
 
         html += `<div class="calendar-day${isToday ? ' today' : ''}" data-date="${dateStr}" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="calendarDrop(event, '${dateStr}')">`;
         html += `<div class="calendar-day-header"><span class="calendar-day-name">${dayNames[i]}</span><span class="calendar-day-date">${dayLabel}</span></div>`;
@@ -674,7 +687,7 @@ function renderMonthView() {
             const dateStr = toDateStr(cursor);
             const isToday = dateStr === todayStr;
             const isCurrentMonth = cursor.getMonth() === month;
-            const dayTasks = tasks.filter(t => !t.deleted && t.startDate === dateStr);
+            const dayTasks = getActiveTasks().filter(t => t.startDate === dateStr);
 
             let cls = 'month-cell';
             if (isToday) cls += ' today';
