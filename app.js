@@ -334,7 +334,6 @@ function renderCardView() {
             <span class="col-count">${colTasks.length}</span>
         </div>`;
 
-        html += '<div class="card-column-tasks">';
         colTasks.forEach(task => {
             const doneClass = task.done ? ' task-done' : '';
             html += `<div class="task-card${doneClass}" style="border-top-color:${col.color}" onclick="openTaskModal('${task.id}')" draggable="false">`;
@@ -353,7 +352,6 @@ function renderCardView() {
             html += '</div>';
         });
 
-        html += '</div>';
         html += `<button class="card-column-add" onclick="openTaskModal(null, '${col.id}')">+ Add Task</button>`;
         html += '</div>';
     });

@@ -95,26 +95,36 @@ body {
 }
 .sign-in-box .auth-secondary:hover { color: var(--text); }
 
-/* ── Toolbar ── */
+/* ── App Layout ── */
+#app {
+    flex-direction: row !important;
+}
+
+/* ── Toolbar / Sidebar ── */
 #toolbar {
     display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px;
     background: var(--toolbar-bg);
-    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
     user-select: none;
     flex-shrink: 0;
+    width: 140px;
+    height: 100vh;
+    overflow-y: auto;
 }
 #appTitle {
     font-weight: 700;
     font-size: 16px;
     color: var(--text);
+    margin-bottom: 8px;
 }
-.toolbar-spacer { flex: 1; }
+.toolbar-spacer { display: none; }
 
 #viewToggle {
     display: flex;
+    flex-direction: column;
     border: 1px solid var(--border);
     border-radius: 4px;
     overflow: hidden;
@@ -122,14 +132,15 @@ body {
 #viewToggle button {
     background: #fff;
     border: none;
-    border-right: 1px solid var(--border);
-    padding: 5px 14px;
+    border-bottom: 1px solid var(--border);
+    padding: 6px 12px;
     font-size: 13px;
     cursor: pointer;
     font-family: inherit;
     color: var(--text);
+    text-align: left;
 }
-#viewToggle button:last-child { border-right: none; }
+#viewToggle button:last-child { border-bottom: none; }
 #viewToggle button:hover { background: #e8e8e8; }
 #viewToggle button.active { background: #d0d8e8; color: #2a5a8a; font-weight: 600; }
 
@@ -137,11 +148,13 @@ body {
     background: #e0e0e0;
     border: 1px solid #bbb;
     border-radius: 4px;
-    padding: 5px 12px;
+    padding: 6px 12px;
     font-size: 13px;
     cursor: pointer;
     font-family: inherit;
     color: var(--text);
+    text-align: left;
+    width: 100%;
 }
 #toolbar button:not(#viewToggle button):hover { background: #d0d0d0; }
 #btnAddTask {
@@ -151,11 +164,14 @@ body {
 }
 #btnAddTask:hover { background: var(--primary-hover) !important; }
 
+#btnSignOut {
+    margin-top: auto;
+}
+
 .sync-status {
     font-size: 11px;
     color: var(--text-light);
     white-space: nowrap;
-    min-width: 50px;
     text-align: center;
 }
 
@@ -339,15 +355,6 @@ body {
 }
 .col-drop-indicator::before { top: -4px; }
 .col-drop-indicator::after { bottom: -4px; }
-.card-column-tasks {
-    flex: 1;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    min-height: 0;
-    max-height: calc(100vh - 160px);
-}
 .card-column-add {
     background: none;
     border: 1px dashed #bbb;
@@ -682,12 +689,12 @@ body {
 }
 .calendar-unscheduled-list {
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
     gap: 6px;
     padding: 8px 12px 10px;
 }
 .calendar-unscheduled-list .calendar-task {
-    max-width: none;
+    max-width: 260px;
 }
 .calendar-empty {
     font-size: 12px;
@@ -878,12 +885,20 @@ body {
 
 /* ── Responsive ── */
 @media (max-width: 768px) {
+    #app { flex-direction: column !important; }
     #toolbar {
+        flex-direction: row;
         flex-wrap: wrap;
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
         gap: 6px;
     }
-    .toolbar-spacer { display: none; }
-    #appTitle { width: 100%; }
+    #viewToggle { flex-direction: row; }
+    #viewToggle button { border-bottom: none; border-right: 1px solid var(--border); }
+    #viewToggle button:last-child { border-right: none; }
+    #btnSignOut { margin-top: 0; }
 
     #viewContainer { padding: 10px; }
 
