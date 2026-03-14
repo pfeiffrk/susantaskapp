@@ -50,16 +50,7 @@ const undoStack = [];
 const redoStack = [];
 const MAX_UNDO = 50;
 let skipSnapshot = false;
-
-function takeSnapshot() {
-    undoStack.push({
-        tasks: JSON.stringify(tasks),
-        categories: JSON.stringify(categories)
-    });
-    if (undoStack.length > MAX_UNDO) undoStack.shift();
-    redoStack.length = 0;
-    updateUndoRedoButtons();
-}
+let lastSavedState = null;
 
 function undo() {
     if (undoStack.length === 0) return;
@@ -70,6 +61,7 @@ function undo() {
     const snap = undoStack.pop();
     tasks = JSON.parse(snap.tasks);
     categories = JSON.parse(snap.categories);
+    lastSavedState = { tasks: snap.tasks, categories: snap.categories };
     updateUndoRedoButtons();
     renderView();
     skipSnapshot = true;
@@ -85,6 +77,7 @@ function redo() {
     const snap = redoStack.pop();
     tasks = JSON.parse(snap.tasks);
     categories = JSON.parse(snap.categories);
+    lastSavedState = { tasks: snap.tasks, categories: snap.categories };
     updateUndoRedoButtons();
     renderView();
     skipSnapshot = true;
@@ -106,8 +99,17 @@ document.addEventListener('keydown', function(e) {
 
 function saveToFirebase() {
     if (!firebaseUser) return;
-    if (!skipSnapshot) takeSnapshot();
+    if (!skipSnapshot && lastSavedState) {
+        undoStack.push(lastSavedState);
+        if (undoStack.length > MAX_UNDO) undoStack.shift();
+        redoStack.length = 0;
+        updateUndoRedoButtons();
+    }
     skipSnapshot = false;
+    lastSavedState = {
+        tasks: JSON.stringify(tasks),
+        categories: JSON.stringify(categories)
+    };
     const statusEl = document.getElementById('syncStatus');
     statusEl.textContent = 'Saving...';
     userRef().update({
@@ -151,6 +153,10 @@ function startDataListener() {
             saveToFirebase();
         }
         statusEl.textContent = '';
+        lastSavedState = {
+            tasks: JSON.stringify(tasks),
+            categories: JSON.stringify(categories)
+        };
         updateViewToggle();
         renderView();
     });
