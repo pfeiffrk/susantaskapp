@@ -195,11 +195,10 @@ function initApp() {
 
 // ── View Switching ──
 function switchView(view) {
-    showingDeleted = false;
     settings.view = view;
     updateViewToggle();
     renderView();
-    saveToFirebase();
+    if (view !== 'deleted') saveToFirebase();
 }
 
 function updateViewToggle() {
@@ -207,13 +206,12 @@ function updateViewToggle() {
     document.getElementById('btnCardView').classList.toggle('active', settings.view === 'cards');
     document.getElementById('btnWeekView').classList.toggle('active', settings.view === 'week');
     document.getElementById('btnMonthView').classList.toggle('active', settings.view === 'month');
+    document.getElementById('btnDeletedView').classList.toggle('active', settings.view === 'deleted');
 }
 
 // ── Rendering ──
-let showingDeleted = false;
-
 function renderView() {
-    if (showingDeleted) {
+    if (settings.view === 'deleted') {
         showDeletedTasks();
     } else if (settings.view === 'cards') {
         renderCardView();
@@ -823,7 +821,6 @@ function deleteTaskDirect(id) {
 }
 
 function showDeletedTasks() {
-    showingDeleted = true;
     const container = document.getElementById('viewContainer');
     const deleted = tasks.filter(t => t.deleted);
 
