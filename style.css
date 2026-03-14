@@ -237,6 +237,19 @@ body {
     transition: background 0.15s;
 }
 .task-table tbody tr:hover { background: #f7f8fc; }
+.table-add-task {
+    width: 100%;
+    padding: 10px;
+    margin-top: 8px;
+    background: none;
+    border: 1px dashed #bbb;
+    border-radius: var(--radius);
+    font-size: 13px;
+    color: var(--text-light);
+    cursor: pointer;
+    font-family: inherit;
+}
+.table-add-task:hover { background: rgba(0,0,0,0.03); border-color: #999; color: var(--primary); }
 .task-table .cat-dot {
     display: inline-block;
     width: 10px;

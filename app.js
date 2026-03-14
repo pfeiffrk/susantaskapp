@@ -277,7 +277,9 @@ function renderTableView() {
         });
     }
 
-    html += '</tbody></table></div>';
+    html += '</tbody></table>';
+    html += '<button class="table-add-task" onclick="openTaskModal()">+ Add Task</button>';
+    html += '</div>';
     container.innerHTML = html;
 }
 
