@@ -336,7 +336,7 @@ body {
     text-align: left; padding-left: 10px; min-width: 180px; position: sticky; left: 0; z-index: 3;
     background: var(--surface-alt); border-right: 2px solid var(--border);
 }
-.timeline-table td { padding: 0; height: 36px; border-bottom: 1px solid var(--border); position: relative; }
+.timeline-table td { padding: 0; height: 40px; border-bottom: 1px solid var(--border); position: relative; }
 .timeline-table td.tl-task-name {
     font-size: 12px; font-weight: 500; color: var(--text); padding: 4px 10px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;
@@ -345,12 +345,15 @@ body {
 .timeline-table td.tl-task-name:hover { color: var(--primary); }
 .tl-today-col { background: rgba(74,144,217,0.07); }
 .tl-bar {
-    position: absolute; top: 4px; bottom: 4px; border-radius: 4px; min-width: 6px;
-    cursor: pointer; opacity: 0.85; transition: opacity 0.15s;
-    display: flex; align-items: center; padding: 0 6px; overflow: hidden;
+    position: absolute; top: 3px; bottom: 3px; left: 2px; right: 2px;
+    border-radius: var(--radius); min-width: 6px;
+    cursor: pointer; transition: box-shadow 0.15s, transform 0.15s;
+    display: flex; align-items: center; padding: 0 8px; overflow: hidden;
+    background: var(--surface); border-top: 3px solid var(--border);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
-.tl-bar:hover { opacity: 1; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
-.tl-bar-label { font-size: 10px; color: #fff; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tl-bar:hover { box-shadow: 0 3px 8px rgba(0,0,0,0.18); transform: translateY(-1px); }
+.tl-bar-label { font-size: 11px; color: var(--text); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tl-weekend { background: var(--surface-alt); }
 .tl-empty { text-align: center; color: var(--text-light); padding: 40px; font-size: 14px; }
 

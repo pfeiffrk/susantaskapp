@@ -675,7 +675,7 @@ function renderTimelineView() {
                 const span = barEndCol - barStartCol + 1;
                 const pct = span * 100;
                 html += `<td class="${cls}" colspan="${span}" style="position:relative;">`;
-                html += `<div class="tl-bar" style="background:${barColor};left:2px;right:2px;" onclick="openTaskModal('${task.id}')">`;
+                html += `<div class="tl-bar" style="border-top-color:${barColor};" onclick="openTaskModal('${task.id}')">`;
                 html += `<span class="tl-bar-label">${escapeHtml(task.title)}</span></div></td>`;
             } else if (idx > barStartCol && idx <= barEndCol) {
                 // Skip — covered by colspan
