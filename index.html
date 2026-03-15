@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tasks</title>
+    <link id="googleFontsLink" rel="stylesheet" href="">
     <link rel="stylesheet" href="style.css">
     <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-auth-compat.js"></script>
@@ -20,28 +21,33 @@
 <div id="app" style="display:none;">
     <!-- Toolbar -->
     <div id="toolbar">
-        <span id="appTitle">Tasks</span>
-        <div class="toolbar-spacer"></div>
-        <div id="viewToggle">
-            <button id="btnTableView" class="active" onclick="switchView('table')">Table</button>
-            <button id="btnCardView" onclick="switchView('cards')">Cards</button>
-            <button id="btnWeekView" onclick="switchView('week')">Week</button>
-            <button id="btnMonthView" onclick="switchView('month')">Month</button>
-            <button id="btnDeletedView" onclick="switchView('deleted')">Deleted Tasks</button>
+        <div id="toolbarContent">
+            <span id="appTitle">Tasks</span>
+            <div class="toolbar-spacer"></div>
+            <div id="viewToggle">
+                <button id="btnTableView" class="active" onclick="switchView('table')">Table</button>
+                <button id="btnCardView" onclick="switchView('cards')">Cards</button>
+                <button id="btnWeekView" onclick="switchView('week')">Week</button>
+                <button id="btnMonthView" onclick="switchView('month')">Month</button>
+                <button id="btnTimelineView" onclick="switchView('timeline')">Timeline</button>
+                <button id="btnDeletedView" onclick="switchView('deleted')">Deleted Tasks</button>
+            </div>
+            <button id="btnAddTask" onclick="openTaskModal()">+ Add Task</button>
+            <button id="btnCategories" onclick="openCategoryModal()">Categories</button>
+            <button id="btnSkins" onclick="toggleSkinsPanel()">Skins / Format</button>
+            <label id="showDoneToggle" class="sidebar-checkbox">
+                <input type="checkbox" id="cbShowDone" checked onchange="toggleShowDone(this.checked)">
+                Show Done
+            </label>
+            <span id="syncStatus" class="sync-status"></span>
+            <div id="undoRedoBar">
+                <button id="btnUndo" onclick="undo()" disabled title="Undo (Ctrl+Z)">&#8592; Undo</button>
+                <button id="btnRedo" onclick="redo()" disabled title="Redo (Ctrl+Y)">Redo &#8594;</button>
+            </div>
+            <button id="btnExport" onclick="exportToExcel()">Export</button>
+            <button id="btnSignOut" onclick="firebaseSignOut()">Sign Out</button>
         </div>
-        <button id="btnAddTask" onclick="openTaskModal()">+ Add Task</button>
-        <button id="btnCategories" onclick="openCategoryModal()">Categories</button>
-        <label id="showDoneToggle" class="sidebar-checkbox">
-            <input type="checkbox" id="cbShowDone" checked onchange="toggleShowDone(this.checked)">
-            Show Done
-        </label>
-        <span id="syncStatus" class="sync-status"></span>
-        <div id="undoRedoBar">
-            <button id="btnUndo" onclick="undo()" disabled title="Undo (Ctrl+Z)">&#8592; Undo</button>
-            <button id="btnRedo" onclick="redo()" disabled title="Redo (Ctrl+Y)">Redo &#8594;</button>
-        </div>
-        <button id="btnExport" onclick="exportToExcel()">Export</button>
-        <button id="btnSignOut" onclick="firebaseSignOut()">Sign Out</button>
+        <div id="skinsPanel" style="display:none;"></div>
     </div>
 
     <!-- View Container -->
