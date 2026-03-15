@@ -200,6 +200,7 @@ body {
 .card-column-header .col-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; vertical-align: middle; }
 .card-column-header .col-count { font-size: 12px; color: var(--text-light); font-weight: 400; }
 .card-column.col-dragging { opacity: 0.35; }
+.card-column.drag-over { outline: 2px dashed var(--primary); outline-offset: -2px; background: rgba(74,144,217,0.08); }
 .col-drop-indicator { width: 4px; min-width: 4px; background: var(--primary); border-radius: 2px; align-self: stretch; flex-shrink: 0; position: relative; }
 .col-drop-indicator::before, .col-drop-indicator::after { content: ''; position: absolute; left: 50%; transform: translateX(-50%); width: 12px; height: 12px; background: var(--primary); border-radius: 50%; }
 .col-drop-indicator::before { top: -4px; }
@@ -355,6 +356,7 @@ body {
 .tl-bar:hover { box-shadow: 0 3px 8px rgba(0,0,0,0.18); transform: translateY(-1px); }
 .tl-bar-label { font-size: 11px; color: var(--text); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tl-weekend { background: var(--surface-alt); }
+.tl-drag-over { background: rgba(74,144,217,0.15) !important; }
 .tl-empty { text-align: center; color: var(--text-light); padding: 40px; font-size: 14px; }
 
 /* ── Skins Panel ── */

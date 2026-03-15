@@ -365,6 +365,7 @@ function getSortedTasks() {
 
 // ── Card View ──
 let cardDragCatId = null;
+let cardDragTaskId = null;
 
 function renderCardView() {
     const container = document.getElementById('viewContainer');
@@ -375,13 +376,13 @@ function renderCardView() {
         const colTasks = getActiveTasks().filter(t => (t.categoryId || '') === col.id);
         const draggable = col.id ? 'draggable="true"' : '';
         const dragHandlers = col.id ? `ondragstart="cardColDragStart(event, '${col.id}')" ondragend="cardColDragEnd(event)"` : '';
-        html += `<div class="card-column" data-cat-id="${col.id}" ${draggable} ${dragHandlers}>`;
+        html += `<div class="card-column" data-cat-id="${col.id}" ${draggable} ${dragHandlers} ondragover="cardColumnDragOver(event)" ondrop="cardColumnDrop(event, '${col.id}')">`;
         html += `<div class="card-column-header" style="cursor:${col.id ? 'grab' : 'default'}">
             <span><span class="col-dot" style="background:${col.color}"></span>${escapeHtml(col.name)}</span>
             <span class="col-count">${colTasks.length}</span></div>`;
         colTasks.forEach(task => {
             const doneClass = task.done ? ' task-done' : '';
-            html += `<div class="task-card${doneClass}" style="border-top-color:${col.color}" onclick="openTaskModal('${task.id}')" draggable="false">`;
+            html += `<div class="task-card${doneClass}" style="border-top-color:${col.color}" onclick="openTaskModal('${task.id}')" draggable="true" ondragstart="cardTaskDragStart(event, '${task.id}')" ondragend="cardTaskDragEnd(event)">`;
             html += `<button class="btn-delete-card" onclick="event.stopPropagation();deleteTaskDirect('${task.id}')" title="Delete">&times;</button>`;
             const pri = PRIORITY_LEVELS.find(p => p.value === (task.priority || 'low')) || PRIORITY_LEVELS[0];
             html += `<div class="card-title">${escapeHtml(task.title)} <span class="priority-badge small" style="background:${pri.color}">${pri.label}</span> <a class="done-link" href="#" onclick="event.stopPropagation();toggleTaskDone(event, '${task.id}')">${task.done ? 'Open' : 'Done'}</a></div>`;
@@ -445,6 +446,40 @@ function cardColDragEnd(e) {
         if (cardView._onDragOver) cardView.removeEventListener('dragover', cardView._onDragOver);
         if (cardView._onDrop) cardView.removeEventListener('drop', cardView._onDrop);
     }
+}
+
+// ── Card Task Drag-and-Drop ──
+function cardTaskDragStart(e, taskId) {
+    cardDragTaskId = taskId;
+    e.dataTransfer.effectAllowed = 'move';
+    e.stopPropagation();
+    e.target.style.opacity = '0.4';
+}
+
+function cardTaskDragEnd(e) {
+    cardDragTaskId = null;
+    e.target.style.opacity = '';
+    document.querySelectorAll('.card-column').forEach(col => col.classList.remove('drag-over'));
+}
+
+function cardColumnDragOver(e) {
+    if (!cardDragTaskId) return;
+    e.preventDefault();
+    document.querySelectorAll('.card-column.drag-over').forEach(c => c.classList.remove('drag-over'));
+    e.currentTarget.classList.add('drag-over');
+}
+
+function cardColumnDrop(e, catId) {
+    if (!cardDragTaskId) return;
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
+    const task = tasks.find(t => t.id === cardDragTaskId);
+    if (task) {
+        task.categoryId = catId;
+        renderCardView();
+        saveToFirebase();
+    }
+    cardDragTaskId = null;
 }
 
 // ── Calendar Shared ──
@@ -594,6 +629,54 @@ function renderMonthView() {
 // ── Timeline / Gantt View ──
 let timelineStart = null;
 let timelineDays = 28;
+let tlDragTaskId = null;
+
+function tlDragStart(e, taskId) {
+    tlDragTaskId = taskId;
+    e.dataTransfer.effectAllowed = 'move';
+    setTimeout(() => { if (e.target) e.target.style.opacity = '0.4'; }, 0);
+}
+
+function tlDragEnd(e) {
+    tlDragTaskId = null;
+    e.target.style.opacity = '';
+    document.querySelectorAll('.tl-drag-over').forEach(el => el.classList.remove('tl-drag-over'));
+}
+
+function tlDragOver(e) {
+    if (!tlDragTaskId) return;
+    e.preventDefault();
+    e.currentTarget.classList.add('tl-drag-over');
+}
+
+function tlDragLeave(e) {
+    e.currentTarget.classList.remove('tl-drag-over');
+}
+
+function tlDrop(e, dateStr) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('tl-drag-over');
+    if (!tlDragTaskId) return;
+    const task = tasks.find(t => t.id === tlDragTaskId);
+    if (task) {
+        // Calculate duration to preserve it
+        if (task.startDate && task.dueDate) {
+            const oldStart = new Date(task.startDate + 'T00:00:00');
+            const oldEnd = new Date(task.dueDate + 'T00:00:00');
+            const duration = Math.round((oldEnd - oldStart) / (1000 * 60 * 60 * 24));
+            const newStart = new Date(dateStr + 'T00:00:00');
+            const newEnd = new Date(newStart);
+            newEnd.setDate(newEnd.getDate() + duration);
+            task.startDate = dateStr;
+            task.dueDate = toDateStr(newEnd);
+        } else {
+            task.startDate = dateStr;
+        }
+        renderTimelineView();
+        saveToFirebase();
+    }
+    tlDragTaskId = null;
+}
 
 function timelineNav(offset) {
     if (!timelineStart) timelineStart = getMonday(new Date());
@@ -652,7 +735,7 @@ function renderTimelineView() {
         const taskEnd = task.dueDate || task.startDate;
 
         html += '<tr>';
-        html += `<td class="tl-task-name" onclick="openTaskModal('${task.id}')" title="${escapeHtml(task.title)}">${escapeHtml(task.title)}</td>`;
+        html += `<td class="tl-task-name" draggable="true" ondragstart="tlDragStart(event, '${task.id}')" ondragend="tlDragEnd(event)" onclick="openTaskModal('${task.id}')" title="${escapeHtml(task.title)}">${escapeHtml(task.title)}</td>`;
 
         // Find bar start and end column indices
         let barStartCol = -1, barEndCol = -1;
@@ -673,14 +756,13 @@ function renderTimelineView() {
 
             if (idx === barStartCol && barStartCol >= 0) {
                 const span = barEndCol - barStartCol + 1;
-                const pct = span * 100;
-                html += `<td class="${cls}" colspan="${span}" style="position:relative;">`;
-                html += `<div class="tl-bar" style="border-top-color:${barColor};" onclick="openTaskModal('${task.id}')">`;
+                html += `<td class="${cls}" colspan="${span}" style="position:relative;" ondragover="tlDragOver(event)" ondragleave="tlDragLeave(event)" ondrop="tlDrop(event, '${d.str}')">`;
+                html += `<div class="tl-bar" style="border-top-color:${barColor};" draggable="true" ondragstart="tlDragStart(event, '${task.id}')" ondragend="tlDragEnd(event)" onclick="openTaskModal('${task.id}')">`;
                 html += `<span class="tl-bar-label">${escapeHtml(task.title)}</span></div></td>`;
             } else if (idx > barStartCol && idx <= barEndCol) {
                 // Skip — covered by colspan
             } else {
-                html += `<td class="${cls}"></td>`;
+                html += `<td class="${cls}" ondragover="tlDragOver(event)" ondragleave="tlDragLeave(event)" ondrop="tlDrop(event, '${d.str}')"></td>`;
             }
         });
         html += '</tr>';
