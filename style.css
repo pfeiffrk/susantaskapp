@@ -156,9 +156,9 @@ body {
 .task-table th .sort-arrow { font-size: 10px; margin-left: 4px; color: var(--text-light); }
 .task-table th .sort-arrow.active { color: var(--primary); }
 .task-table td {
-    padding: 10px 14px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: middle; color: var(--text);
+    padding: 10px 14px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: middle; color: inherit;
 }
-.task-table tr { cursor: pointer; transition: background 0.15s; }
+.task-table tr { cursor: pointer; transition: background 0.15s; color: var(--text); }
 .task-table tbody tr:hover { background: var(--surface-hover); }
 .table-add-task {
     width: 100%; padding: 10px; margin-top: 8px; background: none;
@@ -343,7 +343,7 @@ body {
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;
     position: sticky; left: 0; z-index: 1; background: var(--surface); border-right: 2px solid var(--border); cursor: pointer;
 }
-.timeline-table td.tl-task-name:hover { color: var(--primary); }
+.timeline-table td.tl-task-name:hover { opacity: 0.8; }
 .tl-today-col { background: rgba(74,144,217,0.07); }
 .tl-bar {
     position: absolute; top: 3px; bottom: 3px; left: 2px; right: 2px;
