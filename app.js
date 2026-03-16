@@ -310,8 +310,9 @@ function renderTableView() {
             const catDot = cat ? `<span class="cat-dot" style="background:${cat.color}"></span>` : '';
             const catName = cat ? cat.name : '';
             const pri = PRIORITY_LEVELS.find(p => p.value === (task.priority || 'low')) || PRIORITY_LEVELS[0];
-            const doneClass = task.done ? ' class="task-done"' : '';
-            html += `<tr${doneClass} onclick="openTaskModal('${task.id}')">`;
+            const cs = catStyle(task);
+            const doneClass = task.done ? ' task-done' : '';
+            html += `<tr class="${doneClass}" style="${cs}" onclick="openTaskModal('${task.id}')">`;
             html += `<td>${escapeHtml(task.title)}</td>`;
             html += `<td>${catDot}<span class="cat-name">${escapeHtml(catName)}</span></td>`;
             html += `<td><span class="priority-badge" style="background:${pri.color}">${pri.label}</span></td>`;
@@ -382,7 +383,8 @@ function renderCardView() {
             <span class="col-count">${colTasks.length}</span></div>`;
         colTasks.forEach(task => {
             const doneClass = task.done ? ' task-done' : '';
-            html += `<div class="task-card${doneClass}" style="border-top-color:${col.color}" onclick="openTaskModal('${task.id}')" draggable="true" ondragstart="cardTaskDragStart(event, '${task.id}')" ondragend="cardTaskDragEnd(event)">`;
+            const cs = catStyle(task);
+            html += `<div class="task-card${doneClass}" style="${cs || 'border-top-color:' + col.color}" onclick="openTaskModal('${task.id}')" draggable="true" ondragstart="cardTaskDragStart(event, '${task.id}')" ondragend="cardTaskDragEnd(event)">`;
             html += `<button class="btn-delete-card" onclick="event.stopPropagation();deleteTaskDirect('${task.id}')" title="Delete">&times;</button>`;
             const pri = PRIORITY_LEVELS.find(p => p.value === (task.priority || 'low')) || PRIORITY_LEVELS[0];
             html += `<div class="card-title">${escapeHtml(task.title)} <span class="priority-badge small" style="background:${pri.color}">${pri.label}</span> <a class="done-link" href="#" onclick="event.stopPropagation();toggleTaskDone(event, '${task.id}')">${task.done ? 'Open' : 'Done'}</a></div>`;
@@ -510,7 +512,9 @@ function renderCalendarTask(task) {
     const pri = PRIORITY_LEVELS.find(p => p.value === (task.priority || 'low')) || PRIORITY_LEVELS[0];
     const catColor = cat ? cat.color : '#999';
     const doneClass = task.done ? ' task-done' : '';
-    let html = `<div class="calendar-task${doneClass}" draggable="true" ondragstart="calendarDragStart(event, '${task.id}')" onclick="openTaskModal('${task.id}')" style="border-left-color:${catColor}">`;
+    const cs = catStyle(task);
+    const calStyle = cs || `border-left-color:${catColor}`;
+    let html = `<div class="calendar-task${doneClass}" draggable="true" ondragstart="calendarDragStart(event, '${task.id}')" onclick="openTaskModal('${task.id}')" style="${calStyle}">`;
     html += `<span class="calendar-task-title">${escapeHtml(task.title)}</span>`;
     html += `<span class="priority-badge small" style="background:${pri.color}">${pri.label}</span>`;
     html += `<a class="calendar-task-done-link" href="#" onclick="toggleTaskDone(event, '${task.id}')">${task.done ? 'Open' : 'Done'}</a>`;
@@ -528,7 +532,8 @@ function renderUnscheduledSection() {
         const cat = categories.find(c => c.id === task.categoryId);
         const pri = PRIORITY_LEVELS.find(p => p.value === (task.priority || 'low')) || PRIORITY_LEVELS[0];
         const catColor = cat ? cat.color : '#999';
-        html += `<div class="calendar-task" draggable="true" ondragstart="calendarDragStart(event, '${task.id}')" onclick="openTaskModal('${task.id}')" style="border-left-color:${catColor}">`;
+        const cs = catStyle(task);
+        html += `<div class="calendar-task" draggable="true" ondragstart="calendarDragStart(event, '${task.id}')" onclick="openTaskModal('${task.id}')" style="${cs || 'border-left-color:' + catColor}">`;
         html += `<span class="calendar-task-title">${escapeHtml(task.title)}</span>`;
         html += `<span class="priority-badge small" style="background:${pri.color}">${pri.label}</span>`;
         if (task.dueDate) html += `<span class="calendar-task-due">Due: ${formatDate(task.dueDate)}</span>`;
@@ -731,11 +736,12 @@ function renderTimelineView() {
     activeTasks.forEach(task => {
         const cat = categories.find(c => c.id === task.categoryId);
         const barColor = cat ? cat.color : '#999';
+        const cs = catStyle(task);
         const taskStart = task.startDate || task.dueDate;
         const taskEnd = task.dueDate || task.startDate;
 
         html += '<tr>';
-        html += `<td class="tl-task-name" draggable="true" ondragstart="tlDragStart(event, '${task.id}')" ondragend="tlDragEnd(event)" onclick="openTaskModal('${task.id}')" title="${escapeHtml(task.title)}">${escapeHtml(task.title)}</td>`;
+        html += `<td class="tl-task-name" style="${cs}" draggable="true" ondragstart="tlDragStart(event, '${task.id}')" ondragend="tlDragEnd(event)" onclick="openTaskModal('${task.id}')" title="${escapeHtml(task.title)}">${escapeHtml(task.title)}</td>`;
 
         // Find bar start and end column indices
         let barStartCol = -1, barEndCol = -1;
@@ -757,7 +763,7 @@ function renderTimelineView() {
             if (idx === barStartCol && barStartCol >= 0) {
                 const span = barEndCol - barStartCol + 1;
                 html += `<td class="${cls}" colspan="${span}" style="position:relative;" ondragover="tlDragOver(event)" ondragleave="tlDragLeave(event)" ondrop="tlDrop(event, '${d.str}')">`;
-                html += `<div class="tl-bar" style="border-top-color:${barColor};" draggable="true" ondragstart="tlDragStart(event, '${task.id}')" ondragend="tlDragEnd(event)" onclick="openTaskModal('${task.id}')">`;
+                html += `<div class="tl-bar" style="${cs || 'border-top-color:' + barColor}" draggable="true" ondragstart="tlDragStart(event, '${task.id}')" ondragend="tlDragEnd(event)" onclick="openTaskModal('${task.id}')">`;
                 html += `<span class="tl-bar-label">${escapeHtml(task.title)}</span></div></td>`;
             } else if (idx > barStartCol && idx <= barEndCol) {
                 // Skip — covered by colspan
@@ -1196,6 +1202,23 @@ function resetTheme() {
 function escapeHtml(str) {
     if (!str) return '';
     return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function isLightColor(hex) {
+    if (!hex) return true;
+    hex = hex.replace('#', '');
+    const r = parseInt(hex.substring(0,2),16);
+    const g = parseInt(hex.substring(2,4),16);
+    const b = parseInt(hex.substring(4,6),16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.55;
+}
+
+function catStyle(task) {
+    const cat = categories.find(c => c.id === task.categoryId);
+    if (!cat) return '';
+    const textColor = isLightColor(cat.color) ? '#000' : '#fff';
+    return `background:${cat.color};color:${textColor};`;
 }
 
 // ── Start ──
