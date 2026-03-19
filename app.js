@@ -922,18 +922,135 @@ function deleteCategoryById(id) {
 
 // ── Export ──
 function exportToExcel() {
-    const activeTasks = tasks.filter(t => !t.deleted);
-    const rows = [['Title', 'Description', 'Category', 'Priority', 'Start Date', 'Due Date', 'Status']];
-    activeTasks.forEach(task => {
+    const allTasks = tasks.filter(t => !t.deleted);
+    const headers = ['Title', 'Description', 'Category', 'CategoryColor', 'Priority', 'Start Date', 'Due Date', 'Status', 'Created'];
+    const rows = [headers];
+    allTasks.forEach(task => {
         const cat = categories.find(c => c.id === task.categoryId);
-        rows.push([task.title || '', task.description || '', cat ? cat.name : '',
-            (task.priority || 'low').charAt(0).toUpperCase() + (task.priority || 'low').slice(1),
-            task.startDate || '', task.dueDate || '', task.done ? 'Done' : 'Open']);
+        rows.push([
+            task.title || '',
+            task.description || '',
+            cat ? cat.name : '',
+            cat ? cat.color : '',
+            task.priority || 'low',
+            task.startDate || '',
+            task.dueDate || '',
+            task.done ? 'Done' : 'Open',
+            task.createdAt ? new Date(task.createdAt).toISOString() : ''
+        ]);
     });
     let csv = rows.map(row => row.map(cell => '"' + String(cell).replace(/"/g, '""') + '"').join(',')).join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob); const a = document.createElement('a');
     a.href = url; a.download = 'tasks.csv'; a.click(); URL.revokeObjectURL(url);
+}
+
+function importFromCSV(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const text = e.target.result.replace(/^\uFEFF/, '');
+        const rows = parseCSV(text);
+        if (rows.length < 2) { alert('No data found in file.'); input.value = ''; return; }
+        const headers = rows[0].map(h => h.trim().toLowerCase());
+        const colIdx = key => headers.indexOf(key);
+        const iTitle = colIdx('title');
+        if (iTitle === -1) { alert('CSV must have a "Title" column.'); input.value = ''; return; }
+        const iDesc = colIdx('description');
+        const iCat = colIdx('category');
+        const iCatColor = colIdx('categorycolor');
+        const iPri = colIdx('priority');
+        const iStart = colIdx('start date');
+        const iDue = colIdx('due date');
+        const iStatus = colIdx('status');
+        const iCreated = colIdx('created');
+
+        let imported = 0;
+        for (let r = 1; r < rows.length; r++) {
+            const row = rows[r];
+            const title = (row[iTitle] || '').trim();
+            if (!title) continue;
+
+            // Find or create category
+            let categoryId = '';
+            const catName = iCat >= 0 ? (row[iCat] || '').trim() : '';
+            if (catName) {
+                let cat = categories.find(c => c.name.toLowerCase() === catName.toLowerCase());
+                if (!cat) {
+                    const catColor = (iCatColor >= 0 && row[iCatColor]) ? row[iCatColor].trim() : '#4a90d9';
+                    cat = { id: generateId(), name: catName, color: catColor };
+                    categories.push(cat);
+                }
+                categoryId = cat.id;
+            }
+
+            const priority = iPri >= 0 ? (row[iPri] || 'low').trim().toLowerCase() : 'low';
+            const statusVal = iStatus >= 0 ? (row[iStatus] || '').trim().toLowerCase() : '';
+            const createdVal = iCreated >= 0 ? (row[iCreated] || '').trim() : '';
+
+            tasks.push({
+                id: generateId(),
+                title,
+                description: iDesc >= 0 ? (row[iDesc] || '').trim() : '',
+                categoryId,
+                priority: ['low','medium','high'].includes(priority) ? priority : 'low',
+                startDate: iStart >= 0 ? (row[iStart] || '').trim() : '',
+                dueDate: iDue >= 0 ? (row[iDue] || '').trim() : '',
+                done: statusVal === 'done',
+                createdAt: createdVal ? new Date(createdVal).getTime() : Date.now(),
+                order: tasks.length
+            });
+            imported++;
+        }
+        input.value = '';
+        if (imported === 0) { alert('No tasks found to import.'); return; }
+        renderView();
+        saveToFirebase();
+        alert(`Imported ${imported} task(s).`);
+    };
+    reader.readAsText(file);
+}
+
+function parseCSV(text) {
+    const rows = [];
+    let i = 0;
+    while (i < text.length) {
+        const row = [];
+        while (i < text.length) {
+            let val = '';
+            if (text[i] === '"') {
+                i++;
+                while (i < text.length) {
+                    if (text[i] === '"' && text[i + 1] === '"') { val += '"'; i += 2; }
+                    else if (text[i] === '"') { i++; break; }
+                    else { val += text[i]; i++; }
+                }
+                if (text[i] === ',') i++;
+                else if (text[i] === '\r' || text[i] === '\n') { /* end of row */ }
+            } else {
+                const next = text.indexOf(',', i);
+                const nl = text.indexOf('\n', i);
+                const cr = text.indexOf('\r', i);
+                let end = text.length;
+                if (next >= 0 && (nl < 0 || next < nl) && (cr < 0 || next < cr)) {
+                    val = text.substring(i, next);
+                    i = next + 1;
+                } else {
+                    end = nl >= 0 ? nl : text.length;
+                    if (cr >= 0 && cr < end) end = cr;
+                    val = text.substring(i, end);
+                    i = end;
+                }
+            }
+            row.push(val);
+            if (i >= text.length || text[i] === '\n' || text[i] === '\r') break;
+        }
+        rows.push(row);
+        if (text[i] === '\r') i++;
+        if (text[i] === '\n') i++;
+    }
+    return rows;
 }
 
 // ══════════════════════════════════════════

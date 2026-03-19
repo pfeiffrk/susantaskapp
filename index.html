@@ -45,6 +45,8 @@
                 <button id="btnRedo" onclick="redo()" disabled title="Redo (Ctrl+Y)">Redo &#8594;</button>
             </div>
             <button id="btnExport" onclick="exportToExcel()">Export</button>
+            <button id="btnImport" onclick="document.getElementById('importFile').click()">Import</button>
+            <input type="file" id="importFile" accept=".csv" style="display:none" onchange="importFromCSV(this)">
             <button id="btnSignOut" onclick="firebaseSignOut()">Sign Out</button>
         </div>
         <div id="skinsPanel" style="display:none;"></div>
